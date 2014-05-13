@@ -1,5 +1,6 @@
 /*
  * Copyright 2011 Licel LLC.
+ * Copyright 2013 FH OOe Forschungs & Entwicklungs GmbH, Michael Roland.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,43 +16,140 @@
  */
 package com.licel.jcardsim.base;
 
+import at.mroland.logging.Logging;
+import at.mroland.objectstaterecovery.PersistentMemory;
+import at.mroland.objectstaterecovery.PersistentMemory_Disabled;
+import at.mroland.objectstaterecovery.TransientMemory;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.security.InvalidParameterException;
 import javacard.framework.*;
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlPullParserFactory;
+import org.xmlpull.v1.XmlSerializer;
 
 /**
  * Base implementation of <code>JCSystem</code>
- * @see JCsystem
+ * @see JCSystem
  */
 public class SimulatorSystem {
+    private static final String TAG = SimulatorSystem.class.getName();
     
     /**
-     * Response status : Applet creation failed = 0x6444
+     * Persistent memory.
      */
-    public static final short SW_APPLET_CRATION_FAILED = 0x6444;
-    /**
-     * Response status : Exception occured = 0x6424
-     */
-    public static final short SW_EXCEPTION_OCCURED = 0x6424;
+    private static final PersistentMemory persistentMemory = new PersistentMemory(); //new PersistentMemory_Disabled();
     
-    // current depth of transaction
-    private static byte transactionDepth = 0;
-    // implementaion api version
-    private static final short API_VERSION = 0x202;
-    // transient memory storage
-    private static TransientMemory transientMemory = new TransientMemory();
+    /**
+     * Transient memory storage.
+     */
+    private static final TransientMemory transientMemory = new TransientMemory(persistentMemory);
 
+    /**
+     * Transaction manager.
+     */
+    private static final TransactionManager transactionManager = new TransactionManager(persistentMemory);
+
+    /**
+     * JavaCard simulator runtime instance.
+     */
     private static SimulatorRuntime runtime = new SimulatorRuntime();
 
-    public static byte currentChannel = 0;
-    public static Object previousActiveObject;
-    
-    public static NullPointerException nullPointerException;
-    public static SecurityException securityException;
-
     private SimulatorSystem() {
-        nullPointerException = new NullPointerException();
-        securityException = new SecurityException();
     }
 
+    /**
+     * Returns the configured incoming block size.
+     * 
+     * @param protocol currently used protocol
+     * @return configured incoming block size
+     */
+    public static short getInBlockSize(byte protocol) {
+        if ((protocol & APDU.PROTOCOL_TYPE_MASK) != APDU.PROTOCOL_T0) {
+            if (((protocol & APDU.PROTOCOL_MEDIA_MASK) == APDU.PROTOCOL_MEDIA_CONTACTLESS_TYPE_A) ||
+                ((protocol & APDU.PROTOCOL_MEDIA_MASK) == APDU.PROTOCOL_MEDIA_CONTACTLESS_TYPE_B)) {
+                return SimulatorConfig.IFSD_TCL;
+            } else {
+                return SimulatorConfig.IFSD_T1;
+            }
+        } else {
+            return 1;
+        }
+    }
+
+    /**
+     * Returns the configured outgoing block size.
+     * 
+     * @param protocol currently used protocol
+     * @return configured outgoing block size
+     */
+    public static short getOutBlockSize(byte protocol) {
+        if ((protocol & APDU.PROTOCOL_TYPE_MASK) != APDU.PROTOCOL_T0) {
+            if (((protocol & APDU.PROTOCOL_MEDIA_MASK) == APDU.PROTOCOL_MEDIA_CONTACTLESS_TYPE_A) ||
+                ((protocol & APDU.PROTOCOL_MEDIA_MASK) == APDU.PROTOCOL_MEDIA_CONTACTLESS_TYPE_B)) {
+                return SimulatorConfig.IFSC_TCL;
+            } else {
+                return SimulatorConfig.IFSC_T1;
+            }
+        } else {
+            return 258;
+        }
+    }
+
+    /**
+     * Returns the currently used communication protocol.
+     * 
+     * @return currently used communication protocol
+     */
+    public static byte getCurrentProtocol() {
+        return runtime.getCurrentProtocol();
+    }
+
+    /**
+     * Returns the NAD byte used in the current communication sequence.
+     * 
+     * @return current NAD, always returns 0
+     */
+    public static byte getNAD(byte protocol) {
+        // TODO: NAD addressing not implemented
+        return 0;
+    }
+
+    /**
+     * Clear transient memory upon event.
+     * 
+     * @param event 
+     */
+    public static void clearTransientMemory(byte event) {
+        transientMemory.clear(event);
+    }
+    
+    /**
+     * Clear transient memory upon event.
+     * 
+     * @param packageContextAID 
+     */
+    public static void deleteTransientMemorySegments(AID packageContextAID) {
+        transientMemory.deleteContextSegments(packageContextAID);
+    }
+    
+    /**
+     * Reset transient memory.
+     */
+    public static void resetTransientMemory() {
+        transientMemory.reset();
+    }
+    
+    /**
+     * Reset persistent memory.
+     */
+    public static void resetPersistentMemory() {
+        // WARN: Do not reset the prohibited lists as they might be written from static initializers!
+        persistentMemory.reset(false);
+    }
+    
     /**
      * Checks if the specified object is transient.
      * <p>Note:
@@ -62,9 +160,9 @@ public class SimulatorSystem {
      * @param theObj the object being queried
      * @return <code>NOT_A_TRANSIENT_OBJECT</code>, <code>CLEAR_ON_RESET</code>, or <code>CLEAR_ON_DESELECT</code>
      * @see #makeTransientBooleanArray(short, byte)
-     * @see #makeByteArray(short, byte)
-     * @see #makeObjectArray(short, byte)
-     * @see #makeShortArray(short, byte)
+     * @see #makeTransientByteArray(short, byte)
+     * @see #makeTransientObjectArray(short, byte)
+     * @see #makeTransientShortArray(short, byte)
      */
     public static byte isTransient(Object theObj) {
         return transientMemory.isTransient(theObj);
@@ -153,10 +251,40 @@ public class SimulatorSystem {
      * <p>See <em>Runtime Environment Specification for the Java Card Platform</em>, section 6.2.1 for details.
      * @return the <code>AID</code> object
      */
-    public static AID getAID() {
-        return runtime.getAID();
+    public static AID getCurrentContextAID() {
+        return runtime.getCurrentContextAID();
     }
 
+    /**
+     * Returns the Java Card runtime environment-owned instance of the <code>AID</code> object associated with
+     * the selected applet context.
+     * 
+     * @return the <code>AID</code> object
+     */
+    public static AID getSelectedContextAID() {
+        return runtime.getSelectedContextAID();
+    }
+    
+    /**
+     * Returns the Java Card runtime environment-owned instance of the <code>AID</code> object associated with
+     * the current package context.
+     * 
+     * @return the <code>AID</code> object
+     */
+    public static AID getCurrentPackageContextAID() {
+        return runtime.getCurrentPackageContextAID();
+    }
+    
+    /**
+     * Returns the Java Card runtime environment-owned instance of the <code>AID</code> object associated with
+     * the selected applet's package context.
+     * 
+     * @return the <code>AID</code> object
+     */
+    public static AID getSelectedPackageContextAID() {
+        return runtime.getSelectedPackageContextAID();
+    }
+    
     /**
      * Returns the Java Card runtime environment-owned instance of the <code>AID</code> object, if any,
      * encapsulating the specified AID bytes in the <code>buffer</code> parameter
@@ -174,9 +302,13 @@ public class SimulatorSystem {
      * or if <code>offset</code> or <code>length</code> are out of range.
      */
     public static AID lookupAID(byte buffer[], short offset, byte length) {
-        return runtime.lookupAID(buffer, offset, length);
+        return runtime.lookupAID(buffer, offset, length, true);
     }
 
+    public static AID lookupAnyAID(byte buffer[], short offset, byte length) {
+        return runtime.lookupAID(buffer, offset, length, false);
+    }
+    
     /**
      * Begins an atomic transaction. If a transaction is already in
      * progress (transaction nesting depth level != 0), a TransactionException is
@@ -195,10 +327,7 @@ public class SimulatorSystem {
      * @see #commitTransaction()
      */
     public static void beginTransaction() {
-        if (transactionDepth != 0) {
-            TransactionException.throwIt(TransactionException.IN_PROGRESS);
-        }
-        transactionDepth = 1;
+        transactionManager.beginTransaction();
     }
 
     /**
@@ -226,10 +355,7 @@ public class SimulatorSystem {
      * @see #commitTransaction()
      */
     public static void abortTransaction() {
-        if (transactionDepth == 0) {
-            TransactionException.throwIt(TransactionException.NOT_IN_PROGRESS);
-        }
-        transactionDepth = 0;
+        transactionManager.abortTransaction();
     }
 
     /**
@@ -243,7 +369,7 @@ public class SimulatorSystem {
      * method has not yet been invoked. In case of tear or failure prior to successful
      * registration, the Java Card runtime environment will roll back all atomically updated persistent state.</em>
      * </ul>
-     * @throws TransactionException ith the following reason codes:
+     * @throws TransactionException with the following reason codes:
      * <ul>
      * <li><code>TransactionException.NOT_IN_PROGRESS</code> if a transaction is not in progress.
      * </ul>
@@ -251,10 +377,7 @@ public class SimulatorSystem {
      * @see #abortTransaction()
      */
     public static void commitTransaction() {
-        if (transactionDepth == 0) {
-            TransactionException.throwIt(TransactionException.NOT_IN_PROGRESS);
-        }
-        transactionDepth = 0;
+        transactionManager.commitTransaction();
     }
 
     /**
@@ -263,20 +386,16 @@ public class SimulatorSystem {
      * @return 1 if transaction in progress, 0 if not
      */
     public static byte getTransactionDepth() {
-        return transactionDepth;
+        return transactionManager.getTransactionDepth();
     }
 
     /**
      * Returns the number of bytes left in the commit buffer.
-     * <p> Note:
-     * <ul>
-     * <li><em>Current method implementation returns 32767.</em>
-     * </ul>
      * @return the number of bytes left in the commit buffer
      * @see #getMaxCommitCapacity()
      */
     public static short getUnusedCommitCapacity() {
-        return Short.MAX_VALUE;
+        return transactionManager.getUnusedCommitCapacity();
     }
 
     /**
@@ -289,15 +408,11 @@ public class SimulatorSystem {
      * of the transaction subsystem. The application cannot determine
      * the actual maximum amount of data which can be modified during
      * a transaction without taking these overhead bytes into consideration.
-     * <p> Note:
-     * <ul>
-     * <li><em>Current method implementation returns 32767.</em>
-     * </ul>
      * @return the total number of bytes in the commit buffer
      * @see #getUnusedCommitCapacity()
      */
     public static short getMaxCommitCapacity() {
-        return Short.MAX_VALUE;
+        return transactionManager.getMaxCommitCapacity();
     }
 
     /**
@@ -316,29 +431,37 @@ public class SimulatorSystem {
     }
 
     /**
-     * Current method implementation returns 32767.
-     * @return 32767
+     * Get the number of bytes available in persistent memory.
+     * @return number of bytes available in persistent memory, or <code>Short.MAX_VALUE</code> if number of bytes exceeds <code>Short.MAX_VALUE</code>
      */
     public static short getAvailablePersistentMemory() {
-        return Short.MAX_VALUE;
+        return transactionManager.getAvailablePersistentMemory();
     }
 
     /**
-     * Current method implementation returns 32767.
-     * @return 32767
+     * Get the number of bytes available in transient CLEAR_ON_RESET memory.
+     * @return number of bytes available in transient CLEAR_ON_RESET memory, or <code>Short.MAX_VALUE</code> if number of bytes exceeds <code>Short.MAX_VALUE</code>
      */
     public static short getAvailableTransientResetMemory() {
-        return Short.MAX_VALUE;
+        return transientMemory.getAvailableMemory(JCSystem.CLEAR_ON_RESET);
     }
 
     /**
-     * Current method implementation returns 32767.
-     * @return 32767
+     * Get the number of bytes available in transient CLEAR_ON_DESELECT memory.
+     * @return number of bytes available in transient CLEAR_ON_DESELECT memory, or <code>Short.MAX_VALUE</code> if number of bytes exceeds <code>Short.MAX_VALUE</code>
      */
     public static short getAvailableTransientDeselectMemory() {
-        return Short.MAX_VALUE;
+        return transientMemory.getAvailableMemory(JCSystem.CLEAR_ON_DESELECT);
     }
 
+    public static TransientMemory getTransientMemoryInstance() {
+        return transientMemory;
+    }
+
+    public static PersistentMemory getPersistentMemoryInstance() {
+        return persistentMemory;
+    }
+    
     /**
      * Called by a client applet to get a server applet's
      * shareable interface object. <p>This method returns <code>null</code>
@@ -351,34 +474,47 @@ public class SimulatorSystem {
      * @param serverAID the AID of the server applet
      * @param parameter optional parameter data
      * @return the shareable interface object or <code>null</code>
-     * @see Applet.getShareableInterfaceObject(AID, byte)
+     * @see Applet#getShareableInterfaceObject(AID, byte)
      */
     public static Shareable getSharedObject(AID serverAID, byte parameter) {
-        Applet serverApplet = runtime.getApplet(serverAID);
-        if (serverApplet != null) {
-            return serverApplet.getShareableInterfaceObject(runtime.getAID(),
-                    parameter);
-        }
-        return null;
+        return runtime.getSharedObject(serverAID, parameter);
     }
 
     /**
-     * Alway return false
-     * @return false value
+     * Indicate if the implementation for the Java Card platform supports the
+     * object deletion mechanism.
+     * <p>Note: Object deletion is automatically handled by the underlying
+     * Java VM's garbage collection. We cannot really influence this! However,
+     * we provide a configuration flag to simulate possible support.</p>
+     * 
+     * @return true if object deletion is (indicated as) supported, else false
      */
     public static boolean isObjectDeletionSupported() {
-        return false;
+        return SimulatorConfig.OBJECT_DELETION_SUPPORT;
     }
 
     /**
-     * Always throw SystemException.ILLEGAL_USE
+     * Trigger the object deletion service of the Java Card runtime environment.
+     * <p>Note: Object deletion is automatically handled by the underlying
+     * Java VM's garbage collection. We cannot really influence this! However,
+     * we provide a configuration flag to simulate possible support.</p>
+     * 
+     * @throws SystemException with the following reason codes:<ul>
+     * <li><code>SystemException.ILLEGAL_USE</code> if the object deletion mechanism is
+     * not implemented.
      */
-    public static void requestObjectDeletion() {
-        // do nothing
+    public static void requestObjectDeletion() throws SystemException {
+        if (SimulatorConfig.OBJECT_DELETION_SUPPORT) {
+            SystemException.throwIt(SystemException.ILLEGAL_USE);
+        }
     }
 
+    /**
+     * Get the currently active logical channel.
+     * @return currently selected logical channel
+     */
     public static byte getCurrentlySelectedChannel() {
-        return currentChannel;
+        return runtime.getCurrentlySelectedChannel();
     }
 
     /**
@@ -394,9 +530,37 @@ public class SimulatorSystem {
      * AID parameter is currently active on this or another logical channel
      */
     public static boolean isAppletActive(AID theApplet) {
-        return (theApplet == runtime.getAID());
+        return runtime.isAppletActive(theApplet);
     }
 
+    /**
+     * Get the expected response length (Ne) for the current APDU.
+     * 
+     * @return Ne
+     */
+    public static short receiveNe() {
+        return runtime.receiveNe();
+    }
+
+    /**
+     * Receive a number of bytes of the current APDU into the specified buffer.
+     * 
+     * @param buffer  receive buffer
+     * @param bOff    starting offset in buffer for receiving APDU bytes
+     * @param len     maximum number of bytes to write into buffer
+     * @return        remaining number of bytes not yet received into buffer
+     */
+    public static short receiveAPDU(byte[] buffer, short bOff, short len) {
+        return runtime.receiveAPDU(buffer, bOff, len);
+    }
+    
+    /**
+     * Send a number of bytes of the response APDU provided in the specified buffer.
+     * 
+     * @param buffer  send buffer
+     * @param bOff    starting offset of the response APDU in buffer
+     * @param len     number of bytes of the response APDU in buffer
+     */
     public static void sendAPDU(byte[] buffer, short bOff, short len) {
         runtime.sendAPDU(buffer, bOff, len);
     }
@@ -440,50 +604,200 @@ public class SimulatorSystem {
     }
 
     /**
-     * Select applet by it's AID
-     * This method must be called before start working with applet instance
-     * @param aid appletId
-     * @return true if applet selection success
-     * before
+     * Transceive APDU with Java Card emulator environment.
+     * 
+     * @param interfaceName name of interface used for APDU exchange
+     * @param command       command APDU
+     * @return              response APDU
+     * @throws InvalidParameterException if specified interface does not exist
      */
-    static boolean selectApplet(AID aid) {
-        return runtime.selectApplet(aid);
-    }
-
-    /**
-     * Transmit <code>commandAPDU</code> to previous selected applet
-     * @param commandAPDU
-     * @return responseAPDU
-     */
-    static byte[] transmitCommand(byte[] command) {
-        return runtime.transmitCommand(command);
-    }
-
-    public static boolean isAppletSelecting(Applet aThis) {
-        // TODO !!! rewrite
-        return false;
+    public static byte[] transceiveAPDU(String interfaceName, byte[] command) throws InvalidParameterException {
+        return runtime.transceiveAPDU(interfaceName, command);
     }
     
     /**
-     * Return <code>SimulatorRuntime</code>
+     * This method is used by the applet <code>process()</code> method to distinguish
+     * the SELECT APDU command which selected the applet <code>aThis</code>, from all other
+     * other SELECT APDU commands which may relate to file or internal applet state selection.
+     * @param applet an applet to be checked
+     * @return <code>true</code> if applet <code>aThis</code> is being selected
+     */
+    public static boolean isAppletSelecting(Applet applet) {
+        return runtime.isAppletSelecting(applet);
+    }
+    
+    /**
+     * Return the <code>SimulatorRuntime</code> instance.
      * @return instance of the SimulatorRuntime
      */
     static SimulatorRuntime getRuntime() {
         return runtime;
     }
     
-    public static void resetRuntime() {
+    /**
+     * Force a reset of the simulator runtime environment.
+     */
+    static void resetRuntime() {
         runtime.resetRuntime();
     }
     
-    public static void setJavaOwner(Object obj, Object owner) {
+    public static void saveToPersistentStorage(File basePath) {
+        // save state of runtime (applets, packages, etc)
+        runtime.saveState(persistentMemory);
+
+        // save persistent memory manager
+        XmlPullParserFactory pullParserFactory;
+        try {
+            pullParserFactory = XmlPullParserFactory.newInstance();
+        } catch (XmlPullParserException e) {
+            pullParserFactory = null;
+            Logging.error(TAG, "Exception while retrieving XmlPullParserFactory: " + e.toString(), e);
+        }
+        
+        try {
+            FileOutputStream ostr = new FileOutputStream(new File(basePath, "persistentmemory.xml"));
+            XmlSerializer xml = pullParserFactory.newSerializer();
+//            XmlSerializer xml = Xml.newSerializer();
+
+            xml.setOutput(ostr, "UTF-8");
+
+            persistentMemory.serializeToXml(xml);
+
+            ostr.flush();
+            ostr.close();
+        } catch (Exception e) {
+            Logging.error(TAG, "Exception while serializing to persistent storage: " + e.toString(), e);
+        }
+
+        // save transient memory state
+        try {
+            FileOutputStream ostr = new FileOutputStream(new File(basePath, "transientmemory.xml"));
+            XmlSerializer xml = pullParserFactory.newSerializer();
+//            XmlSerializer xml = Xml.newSerializer();
+
+            xml.setOutput(ostr, "UTF-8");
+
+            transientMemory.serializeToXml(xml);
+
+            ostr.flush();
+            ostr.close();
+        } catch (Exception e) {
+            Logging.error(TAG, "Exception while serializing to persistent storage: " + e.toString(), e);
+        }
     }
     
-    public static Object getJavaOwner(Object obj) {
-        return obj;
+    public static void loadFromPersistentStorage(File basePath) {
+        // load persistent memory manager
+        XmlPullParserFactory pullParserFactory;
+        try {
+            pullParserFactory = XmlPullParserFactory.newInstance();
+        } catch (XmlPullParserException e) {
+            pullParserFactory = null;
+            Logging.error(TAG, "Exception while retrieving XmlPullParserFactory: " + e.toString(), e);
+        }
+        
+        try {
+            FileInputStream istr = new FileInputStream(new File(basePath, "persistentmemory.xml"));
+            XmlPullParser xml = pullParserFactory.newPullParser();
+//            XmlPullParser xml = Xml.newPullParser();
+            
+            xml.setInput(istr, "UTF-8");
+
+            persistentMemory.deserializeFromXml(xml);
+
+            istr.close();
+        } catch (Exception e) {
+            Logging.error(TAG, "Exception while de-serializing persistent memory from persistent storage: " + e.toString(), e);
+        }
+        
+        // load transient memory state
+        try {
+            FileInputStream istr = new FileInputStream(new File(basePath, "transientmemory.xml"));
+            XmlPullParser xml = pullParserFactory.newPullParser();
+//            XmlPullParser xml = Xml.newPullParser();
+            
+            xml.setInput(istr, "UTF-8");
+
+            transientMemory.deserializeFromXml(xml);
+
+            istr.close();
+        } catch (Exception e) {
+            Logging.error(TAG, "Exception while de-serializing transient memory from persistent storage: " + e.toString(), e);
+        }
+        
+        // load state of runtime (applets, packages, etc)
+        runtime.loadState(persistentMemory);
     }
     
-    public static short getJavaContext(Object obj) {
-        return 0;
+    
+    /**
+     * Load package for installation.
+     * 
+     * @param packageDef package definition structure
+     */
+    public static void installForLoad(PackageDefinition packageDef) {
+        runtime.installForLoad(packageDef);
+    }
+
+    /**
+     * Install applet.
+     * 
+     * @param classAID
+     * @param instanceAID
+     * @param controlInfo
+     * @param appletData 
+     */
+    public static void installForInstall(AID classAID, byte[] instanceAID, byte[] controlInfo, byte[] appletData) {
+        runtime.installForInstall(classAID, instanceAID, controlInfo, appletData);
+    }
+    
+    /**
+     * Make applet selectable/non-selectable.
+     * 
+     * @param instanceAID    applet instance AID
+     * @param selectable     if true, applet will become selectable; if false, applet will become non-selectable
+     */
+    public static void installForMakeSelectable(AID instanceAID, boolean selectable) {
+        runtime.installForMakeSelectable(instanceAID, selectable);
+    }
+    
+    /**
+     * Make applet the default applet on a specific interface and logical channel.
+     * 
+     * @param instanceAID    applet instance AID or null to remove default selection
+     * @param interfaceName  interface to modify default selection on or null to address all interfaces
+     * @param channel        channel to modify default selection on or -1 to address all channels
+     */
+    public static void installForDefaultSelection(AID instanceAID, String interfaceName, byte channel) {
+        runtime.installForDefaultSelection(instanceAID, interfaceName, channel);
+    }
+    
+    /**
+     * Uninstall a previously installed applet instance.
+     * 
+     * @param instanceAID applet instance's AID
+     */
+    public static void uninstall(AID instanceAID) {
+        runtime.uninstall(instanceAID);
+    }
+
+    /**
+     * Remove a previously loaded package.
+     * This method automatically uninstalls all applets contained in the package.
+     * 
+     * @param packageDef package definition structure
+     */
+    public static void remove(PackageDefinition packageDef) {
+        runtime.remove(packageDef);
+    }
+    
+    /**
+     * Remove a previously loaded package.
+     * This method automatically uninstalls all applets contained in the package.
+     * 
+     * @param packageAID package's AID
+     */
+    public static void remove(AID packageAID) {
+        runtime.remove(packageAID);
     }
 }

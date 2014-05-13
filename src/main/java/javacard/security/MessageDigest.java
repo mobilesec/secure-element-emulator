@@ -56,29 +56,29 @@ public abstract class MessageDigest {
      */
     public static final byte ALG_SHA_512 = 6;
     /**
-     * Length of digest in bytes for SHA
+     * Length of digest in bytes for MD5.
      */
-    public static final byte LENGTH_MD5 = 16;
+    public static final byte LENGTH_MD5 = (byte)16;
     /**
-     * Length of digest in bytes for RIPE MD-160
+     * Length of digest in bytes for RIPE MD-160.
      */
-    public static final byte LENGTH_RIPEMD160 = 20;
+    public static final byte LENGTH_RIPEMD160 = (byte)20;
     /**
-     * Length of digest in bytes for SHA-256
+     * Length of digest in bytes for SHA.
      */
-    public static final byte LENGTH_SHA = 20;
+    public static final byte LENGTH_SHA = (byte)20;
     /**
-     * Length of digest in bytes for MD5
+     * Length of digest in bytes for SHA-256.
      */
-    public static final byte LENGTH_SHA_256 = 32;
+    public static final byte LENGTH_SHA_256 = (byte)32;
     /**
-     * Length of digest in bytes for SHA-384
+     * Length of digest in bytes for SHA-384.
      */
-    public static final byte LENGTH_SHA_384 = 48;
+    public static final byte LENGTH_SHA_384 = (byte)48;
     /**
-     * Length of digest in bytes for SHA-512
+     * Length of digest in bytes for SHA-512.
      */
-    public static final byte LENGTH_SHA_512 = 64;
+    public static final byte LENGTH_SHA_512 = (byte)64;
     
     /**
      * Protected Constructor
@@ -100,7 +100,7 @@ public abstract class MessageDigest {
      * or shared access mode is not supported.</ul>
      */
     public static final MessageDigest getInstance(byte algorithm, boolean externalAccess)
-    throws CryptoException {
+            throws CryptoException {
         if (externalAccess) {
             CryptoException.throwIt(CryptoException.NO_SUCH_ALGORITHM);
         }
@@ -160,7 +160,7 @@ public abstract class MessageDigest {
      * <li><code>CryptoException.ILLEGAL_USE</code> if the accumulated message length is greater than the maximum length supported by the algorithm.
      * </ul>
      */
-    public abstract short doFinal(byte[] inBuff, short inOffset, short inLength, byte[] outBuff, short outOffset) throws CryptoException;
+    public abstract short doFinal(byte[] inBuff, short inOffset, short inLength, byte[] outBuff, short outOffset);
     
     /**
      * Accumulates a hash of the input data. This method requires temporary storage of
@@ -186,7 +186,7 @@ public abstract class MessageDigest {
      * </ul>
      * @see #doFinal(byte[], short, short, byte[], short)
      */
-    public abstract void update(byte[] inBuff, short inOffset, short inLength) throws CryptoException;
+    public abstract void update(byte[] inBuff, short inOffset, short inLength);
     
     /**
      * Resets the <code>MessageDigest</code> object to the initial state for further use.

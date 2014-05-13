@@ -159,6 +159,7 @@ public class AsymmetricSignatureImplTest extends TestCase {
      * @param publicKey public key
      * @param etalonMsg etalon message bytes
      * @param etalonSign etalon signature bytes
+     * @param etalonSignOffset 
      */
     public void testEngineVerify(Signature engine, PublicKey publicKey,
             byte[] etalonMsg, byte[] etalonSign, short etalonSignOffset) {
@@ -173,6 +174,8 @@ public class AsymmetricSignatureImplTest extends TestCase {
      * @param publicKey public key
      * @param etalonMsg etalon message bytes
      * @param etalonSign etalon signature bytes
+     * @param etalonSignOffset 
+     * @param etalonSignLength 
      */
     public void testEngineVerify(Signature engine, PublicKey publicKey,
             byte[] etalonMsg, byte[] etalonSign, short etalonSignOffset, short etalonSignLength) {
@@ -180,5 +183,5 @@ public class AsymmetricSignatureImplTest extends TestCase {
         boolean result = engine.verify(etalonMsg, (short) 0, (short) etalonMsg.length,
                 etalonSign, etalonSignOffset, (short)(etalonSignLength!=0?etalonSignLength:etalonSign.length));
         assertEquals(true, result);
-    }    
+    }
 }

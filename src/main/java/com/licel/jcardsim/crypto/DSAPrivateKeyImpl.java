@@ -15,6 +15,7 @@
  */
 package com.licel.jcardsim.crypto;
 
+import javacard.framework.Util;
 import javacard.security.CryptoException;
 import javacard.security.DSAPrivateKey;
 import javacard.security.KeyBuilder;
@@ -34,7 +35,7 @@ public class DSAPrivateKeyImpl extends DSAKeyImpl implements DSAPrivateKey {
 
     /**
      * Construct not-initialized dsa private key
-     * @param size key size it bits
+     * @param keySize key size it bits
      * @see KeyBuilder
      */
     public DSAPrivateKeyImpl(short keySize) {
@@ -44,7 +45,7 @@ public class DSAPrivateKeyImpl extends DSAKeyImpl implements DSAPrivateKey {
     /**
      * Construct and initialize dsa key with DSAPrivateKeyParameters.
      * Use in KeyPairImpl
-     * @see KeyPair
+     * @see javacard.security.KeyPair
      * @see DSAPrivateKeyParameters
      * @param params key params from BouncyCastle API
      */

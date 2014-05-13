@@ -17,6 +17,7 @@ package com.licel.jcardsim.crypto;
 
 import java.math.BigInteger;
 import java.security.SecureRandom;
+import javacard.framework.Util;
 import javacard.security.CryptoException;
 import javacard.security.DSAKey;
 import javacard.security.KeyBuilder;
@@ -40,11 +41,11 @@ public class DSAKeyImpl extends KeyImpl implements DSAKey {
     protected boolean isPrivate;
 
     /**
-     * Construct not-initialized dsa key
+     * Construct not-initialized DSA key
      * @param keyType - key type
-     * @param keySize - key size in bits
-     * @see KeyPair
-     * @see KeyBuilder
+     * @param size - key size in bits
+     * @see javacard.security.KeyPair
+     * @see javacard.security.KeyBuilder
      */
     public DSAKeyImpl(byte keyType, short size) {
         this.size = size;
@@ -52,17 +53,28 @@ public class DSAKeyImpl extends KeyImpl implements DSAKey {
     }
 
     /**
-     * Construct and initialize dsa key with DSAKeyParameters.
+     * Construct and initialize DSA key with DSAKeyParameters.
      * Use in KeyPairImpl
-     * @see KeyPair
+     * @see javacard.security.KeyPair
      * @see DSAKeyParameters
-     * @parameters params key params from BouncyCastle API
+     * @param params key params from BouncyCastle API
      */
     public DSAKeyImpl(DSAKeyParameters params) {
         this(params.isPrivate() ? KeyBuilder.TYPE_DSA_PRIVATE : KeyBuilder.TYPE_DSA_PUBLIC, (short) params.getParameters().getP().bitLength());
         p.setBigInteger(params.getParameters().getP());
         q.setBigInteger(params.getParameters().getQ());
-        g.setBigInteger(params.getParameters().getG());
+        byte[] gBytes = params.getParameters().getG().toByteArray();
+        int byteLength = size / 8;
+        if ((size % 8) != 0) ++byteLength;
+        if (gBytes.length < byteLength) {
+            byte[] bytesPadded = new byte[byteLength];
+            Util.arrayCopy(gBytes, (short)0, bytesPadded, (short)(bytesPadded.length - gBytes.length), (short)gBytes.length);
+            g.setBytes(bytesPadded);
+        } else if ((gBytes.length > byteLength) && (gBytes[0] == 0) && ((gBytes[1] & 0x80) != 0)) {
+            g.setBytes(gBytes, (short)1, (short)(gBytes.length - 1));
+        } else {
+            g.setBytes(gBytes);
+        }
     }
 
     public void clearKey() {

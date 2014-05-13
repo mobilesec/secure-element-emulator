@@ -104,6 +104,9 @@ public class AID {
         if (anObject == null) {
             return false;
         }
+        if (anObject == this) {  // equal by identity
+            return true;
+        }
         if (!(anObject instanceof AID) || ((AID) anObject).aid.length != aid.length) {
             return false;
         } else {

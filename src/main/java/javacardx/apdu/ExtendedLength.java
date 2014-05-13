@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Licel LLC.
+ * Copyright 2013 FH OOe Forschungs & Entwicklungs GmbH, Michael Roland.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +16,15 @@
 package javacardx.apdu;
 
 /**
- * The ExtendedLength interface serves as a tagging interface to indicate that
- * the applet supports extended length APDU. If this interface is implemented by
- * the applet instance, the applet may receive and send up to 32767 bytes of
- * APDU data.
+ * The <code>ExtendedLength</code> interface serves as a tagging interface to indicate that the applet
+ * supports extended length APDU. If this interface is implemented by the applet instance,
+ * the applet may receive and send up to 32767 bytes of APDU data.
  * 
- * <p>The APDU command header in the APDU buffer will use the variable
- * length header defined in ISO7816-4 with a 3 byte Lc value when the Lc field
- * in the incoming APDU header is 3 bytes long. The incoming data in that case
- * will begin at APDU buffer offset 7. 
+ * <p>The APDU command header in the APDU buffer will use the variable length header defined
+ * in ISO7816-4 with a 3 byte Lc value when the Lc field in the incoming APDU header is 3 bytes
+ * long. The incoming data in that case will begin at APDU buffer offset 7.</p>
  * 
- * <p>See <i>Runtime Environment Specification for the Java Card Platform</i> for details.
- *
+ * @see "<em>Runtime Environment Specification for the Java Card Platform</em> for details."
  * @since 2.2.2
  */
 public interface ExtendedLength {

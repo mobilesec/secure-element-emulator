@@ -250,43 +250,37 @@ public abstract class Signature {
      */
     public static final byte ALG_RSA_RIPEMD160_PKCS1_PSS = 23;
     /**
-     * HMAC message authentication algorithm ALG_HMAC_SHA1 This algorithm
-     * generates an HMAC following the steps found in RFC: 2104 using SHA1 as
-     * the hashing algorithm. Since: 2.2.2
+     * HMAC message authentication algorithm <code>ALG_HMAC_SHA1</code> This algorithm generates
+     * an HMAC following the steps found in RFC: 2104 using SHA1 as the hashing algorithm.
      */
     public static final byte ALG_HMAC_SHA1 = 24;
     /**
-     * HMAC message authentication algorithm ALG_HMAC_SHA_256 This algorithm
-     * generates an HMAC following the steps found in RFC: 2104 using SHA-256 as
-     * the hashing algorithm.
+     * HMAC message authentication algorithm <code>ALG_HMAC_SHA_256</code> This algorithm generates
+     * an HMAC following the steps found in RFC: 2104 using SHA-256 as the hashing algorithm.
      */
     public static final byte ALG_HMAC_SHA_256 = 25;
     /**
-     * HMAC message authentication algorithm ALG_HMAC_SHA_384 This algorithm
-     * generates an HMAC following the steps found in RFC: 2104 using SHA-384 as
-     * the hashing algorithm.
+     * HMAC message authentication algorithm <code>ALG_HMAC_SHA_384</code> This algorithm generates
+     * an HMAC following the steps found in RFC: 2104 using SHA-384 as the hashing algorithm.
      */
     public static final byte ALG_HMAC_SHA_384 = 26;
     /**
-     * HMAC message authentication algorithm ALG_HMAC_SHA_512 This algorithm
-     * generates an HMAC following the steps found in RFC: 2104 using SHA-512 as
-     * the hashing algorithm.
+     * HMAC message authentication algorithm <code>ALG_HMAC_SHA_512</code> This algorithm generates
+     * an HMAC following the steps found in RFC: 2104 using SHA-512 as the hashing algorithm.
      */
     public static final byte ALG_HMAC_SHA_512 = 27;
     /**
-     * HMAC message authentication algorithm ALG_HMAC_MD5 This algorithm
-     * generates an HMAC following the steps found in RFC: 2104 using MD5 as the
-     * hashing algorithm.
+     * HMAC message authentication algorithm <code>ALG_HMAC_MD5</code> This algorithm generates
+     * an HMAC following the steps found in RFC: 2104 using MD5 as the hashing algorithm.
      */
     public static final byte ALG_HMAC_MD5 = 28;
     /**
-     * HMAC message authentication algorithm ALG_HMAC_RIPEMD160 This algorithm
-     * generates an HMAC following the steps found in RFC: 2104 using RIPEMD160
-     * as the hashing algorithm.
+     * HMAC message authentication algorithm <code>ALG_HMAC_RIPEMD160</code> This algorithm generates
+     * an HMAC following the steps found in RFC: 2104 using RIPEMD160 as the hashing algorithm.
      */
     public static final byte ALG_HMAC_RIPEMD160 = 29;
     /**
-     * Signature algorithmALG_RSA_SHA_ISO9796_MR generates 20-byte SHA-1 digest,
+     * Signature algorithm <code>ALG_RSA_SHA_ISO9796_MR</code> 20-byte SHA-1 digest,
      * pads it according to the ISO9796-2 specification and encrypts using RSA.
      * This algorithm is conformant with EMV2000. This algorithm uses the first
      * part of the input message as padding bytes during signing. During
@@ -297,7 +291,7 @@ public abstract class Signature {
      */
     public static final byte ALG_RSA_SHA_ISO9796_MR = 30;
     /**
-     * Signature algorithmALG_RSA_RIPEMD160_ISO9796_MR generates 20-byte RIPE
+     * Signature algorithm <code>ALG_RSA_RIPEMD160_ISO9796_MR</code> generates 20-byte RIPE
      * MD-160 digest, pads it according to the ISO9796-2 specification and
      * encrypts using RSA. This algorithm uses the first part of the input
      * message as padding bytes during signing. During verification, these
@@ -308,14 +302,20 @@ public abstract class Signature {
      */
     public static final byte ALG_RSA_RIPEMD160_ISO9796_MR = 31;
     /**
-     * Signature algorithm ALG_KOREAN_SEED_MAC_NOPAD generates an 16-byte MAC
+     * Signature algorithm <code>ALG_KOREAN_SEED_MAC_NOPAD</code> generates an 16-byte MAC
      * using Korean SEED in CBC mode. This algorithm does not pad input data. If
      * the input data is not (16 byte) block aligned it throws CryptoException
      * with the reason code ILLEGAL_USE. Note: This algorithm must not be
      * implemented if export restrictions apply.
      */
-     public static final byte ALG_KOREAN_SEED_MAC_NOPAD = 32;
-   
+    public static final byte ALG_KOREAN_SEED_MAC_NOPAD = 32;
+    /**
+     * Signature algorithm <code>ALG_SEED_MAC_NOPAD</code> is equivalent to <code>ALG_KOREAN_SEED_MAC_NOPAD</code>
+     * and is a placeholder for a name mismatch between <i>Java Card Runtime Environment Specification v2.2.2</i>
+     * and <i>Java Card API Specification v2.2.2</i>.
+     * @see #ALG_KOREAN_SEED_MAC_NOPAD
+     */
+    public static final byte ALG_SEED_MAC_NOPAD = ALG_KOREAN_SEED_MAC_NOPAD;
     /**
      * Used in <code>init()</code> methods to indicate signature sign mode.
      */
@@ -352,12 +352,12 @@ public abstract class Signature {
         }
         switch (algorithm) {
             case ALG_RSA_SHA_ISO9796:
+            case ALG_RSA_SHA_ISO9796_MR:    
             case ALG_RSA_SHA_PKCS1:
             case ALG_RSA_MD5_PKCS1:
             case ALG_RSA_RIPEMD160_ISO9796:
             case ALG_RSA_RIPEMD160_PKCS1:
             case ALG_ECDSA_SHA:
-            case ALG_RSA_SHA_ISO9796_MR:    
                 instance = new AsymmetricSignatureImpl(algorithm);
                 break;
             case ALG_DES_MAC4_NOPAD:
@@ -370,12 +370,12 @@ public abstract class Signature {
             case ALG_DES_MAC4_PKCS5:
             case ALG_DES_MAC8_PKCS5:
             case ALG_AES_MAC_128_NOPAD:
-            case ALG_HMAC_SHA1:                
-            case ALG_HMAC_SHA_256:                
-            case ALG_HMAC_SHA_384:                
-            case ALG_HMAC_SHA_512:                
-            case ALG_HMAC_MD5:                
-            case ALG_HMAC_RIPEMD160:                
+            case ALG_HMAC_SHA1:
+            case ALG_HMAC_SHA_256:
+            case ALG_HMAC_SHA_384:
+            case ALG_HMAC_SHA_512:
+            case ALG_HMAC_MD5:
+            case ALG_HMAC_RIPEMD160:
                 instance = new SymmetricSignatureImpl(algorithm);
                 break;
 

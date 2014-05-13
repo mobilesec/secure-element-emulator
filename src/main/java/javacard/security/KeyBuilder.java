@@ -112,6 +112,42 @@ public class KeyBuilder {
      */
     public static final byte TYPE_AES = 15;
     /**
+     * <code>Key</code> object which implements interface type <code>KoreanSEEDKey</code>
+     * with CLEAR_ON_RESET transient key data.
+     * <p>This <code>Key</code> object implicitly performs a <code>clearKey()</code> on
+     * power on or card reset.
+     */
+    public static final byte TYPE_KOREAN_SEED_TRANSIENT_RESET = 16;
+    /**
+     * <code>Key</code> object which implements interface type <code>KoreanSEEDKey</code>
+     * with CLEAR_ON_DESELECT transient key data.
+     * <p>This <code>Key</code> object implicitly performs a <code>clearKey()</code> on
+     * power on, card reset and applet deselection.
+     */
+    public static final byte TYPE_KOREAN_SEED_TRANSIENT_DESELECT = 17;
+    /**
+     * <code>Key</code> object which implements interface type <code>KoreanSEEDKey</code> with persistent key data.
+     */
+    public static final byte TYPE_KOREAN_SEED = 18;
+    /**
+     * <code>Key</code> object which implements interface type <code>HMACKey</code>
+     * with CLEAR_ON_RESET transient key data.
+     * <p>This <code>Key</code> object implicitly performs a <code>clearKey()</code> on
+     * power on or card reset.
+     */
+    public static final byte TYPE_HMAC_TRANSIENT_RESET = 19;
+    /**
+     * <code>Key</code> object which implements interface type <code>HMACKey</code>
+     * with CLEAR_ON_DESELECT transient key data.
+     * <p>This <code>Key</code> object implicitly performs a <code>clearKey()</code> on
+     * power on, card reset and applet deselection.
+     */
+    public static final byte TYPE_HMAC_TRANSIENT_DESELECT = 20;
+    /**
+     * <code>Key</code> object which implements interface type <code>HMACKey</code> with persistent key data.
+     */
+    public static final byte TYPE_HMAC = 21;
+    /**
      * DES Key Length <code>LENGTH_DES</code> = 64.
      */
     public static final short LENGTH_DES = 64;
@@ -215,62 +251,26 @@ public class KeyBuilder {
      * AES Key Length <code>LENGTH_AES_256</code> = 256.
      */
     public static final short LENGTH_AES_256 = 256;
-
     /**
-     * Key object which implements interface type KoreanSEEDKey with
-     * CLEAR_ON_RESET transient key data. This Key object implicitly performs a
-     * clearKey() on power on or card reset.
+     * Korean Seed Key Length <code>LENGTH_KOREAN_SEED_128</code> = 128.
      */
-    public static final byte TYPE_KOREAN_SEED_TRANSIENT_RESET=16;
+    public static final short LENGTH_KOREAN_SEED_128 = 128;
     /**
-     * Key object which implements interface type KoreanSEEDKey with
-     * CLEAR_ON_DESELECT transient key data. This Key object implicitly performs
-     * a clearKey() on power on or card reset.
-     */
-    public static final byte TYPE_KOREAN_SEED_TRANSIENT_DESELECT = 17;
-    /**
-     * Key object which implements interface type KoreanSEEDKey with persistent
-     * key data.
-     */
-    public static final byte TYPE_KOREAN_SEED = 18;
-    /**
-     * Key object which implements interface type HMACKey with CLEAR_ON_RESET
-     * transient key data. This Key object implicitly performs a clearKey() on
-     * power on or card reset. Note, there is no length constant associated with
-     * HMAC, since the specification states that the key can have any length.
-     */
-    public static final byte TYPE_HMAC_TRANSIENT_RESET = 19;
-    /**
-     * Key object which implements interface type HMACKey with CLEAR_ON_DESELECT
-     * transient key data. This Key object implicitly performs a clearKey() on
-     * power on or card reset.
-     */
-    public static final byte TYPE_HMAC_TRANSIENT_DESELECT = 20;
-    /**
-     * Key object which implements interface type HMACKey with persistent key
-     * data.
-     */
-    public static final byte TYPE_HMAC = 21;
-    /**
-     * HMAC Key Length LENGTH_HMAC_SHA_1_BLOCK_64 = 64.
+     * HMAC Key Length <code>LENGTH_HMAC_SHA_1_BLOCK_64</code> = 64.
      */
     public static final short LENGTH_HMAC_SHA_1_BLOCK_64 = 64;
     /**
-     * HMAC Key Length LENGTH_HMAC_SHA_256_BLOCK_64 = 64.
+     * HMAC Key Length <code>LENGTH_HMAC_SHA_1_BLOCK_64</code> = 64.
      */
     public static final short LENGTH_HMAC_SHA_256_BLOCK_64 = 64;
     /**
-     * HMAC Key Length LENGTH_HMAC_SHA_384_BLOCK_128 = 64.
+     * HMAC Key Length <code>LENGTH_HMAC_SHA_384_BLOCK_64</code> = 128.
      */
-    public static final short LENGTH_HMAC_SHA_384_BLOCK_128 = 128;
+    public static final short LENGTH_HMAC_SHA_384_BLOCK_64 = 128;
     /**
-     * HMAC Key Length LENGTH_HMAC_SHA_512_BLOCK_128 = 64.
+     * HMAC Key Length <code>LENGTH_HMAC_SHA_512_BLOCK_64</code> = 128.
      */
-    public static final short LENGTH_HMAC_SHA_512_BLOCK_128 = 128;
-    /**
-     * Korean Seed Key Length LENGTH_KOREAN_SEED_128 = 128.
-     */
-    public static final short LENGTH_KOREAN_SEED_128 = 128;
+    public static final short LENGTH_HMAC_SHA_512_BLOCK_64 = 128;
 
     /**
      * Creates uninitialized cryptographic keys for signature and cipher algorithms. Only instances created

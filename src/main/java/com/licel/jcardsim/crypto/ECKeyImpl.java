@@ -18,6 +18,7 @@ package com.licel.jcardsim.crypto;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import javacard.framework.JCSystem;
+import javacard.framework.Util;
 import javacard.security.CryptoException;
 import javacard.security.ECKey;
 import javacard.security.KeyBuilder;
@@ -54,7 +55,7 @@ public abstract class ECKeyImpl extends KeyImpl implements ECKey {
      *
      * @param keyType - key type
      * @param keySize - key size in bits
-     * @see KeyPair
+     * @see javacard.security.KeyPair
      * @see KeyBuilder
      */
     public ECKeyImpl(byte keyType, short keySize) {
@@ -66,9 +67,9 @@ public abstract class ECKeyImpl extends KeyImpl implements ECKey {
     /**
      * Construct and initialize ecc key with ECKeyParameters. Use in KeyPairImpl
      *
-     * @see KeyPair
+     * @see javacard.security.KeyPair
      * @see ECKeyParameters
-     * @parameters params key params from BouncyCastle API
+     * @param parameters key params from BouncyCastle API
      */
     public ECKeyImpl(ECKeyParameters parameters) {
         boolean isPrivate = parameters.isPrivate();
@@ -94,7 +95,7 @@ public abstract class ECKeyImpl extends KeyImpl implements ECKey {
     protected boolean isDomainParametersInitialized() {
         return (a.isInitialized() && b.isInitialized() && g.isInitialized() && r.isInitialized()
                 && isKInitialized && (fp.isInitialized() || k != 0));
-    }    
+    }
 
     public void setFieldFP(byte[] buffer, short offset, short length) throws CryptoException {
         fp.setBytes(buffer, offset, length);
@@ -188,17 +189,55 @@ public abstract class ECKeyImpl extends KeyImpl implements ECKey {
      * @see ECDomainParameters
      */
     final void setDomainParameters(ECDomainParameters parameters) {
-        a.setBigInteger(parameters.getCurve().getA().toBigInteger());
-        b.setBigInteger(parameters.getCurve().getB().toBigInteger());
+        byte[] aBytes = parameters.getCurve().getA().toBigInteger().toByteArray();
+        byte[] bBytes = parameters.getCurve().getB().toBigInteger().toByteArray();
+        int byteLength = size / 8;
+        if ((size % 8) != 0) ++byteLength;
+        if (aBytes.length < byteLength) {
+            byte[] bytesPadded = new byte[byteLength];
+            Util.arrayCopy(aBytes, (short)0, bytesPadded, (short)(bytesPadded.length - aBytes.length), (short)aBytes.length);
+            a.setBytes(bytesPadded);
+        } else if ((aBytes.length > byteLength) && (aBytes[0] == 0) && ((aBytes[1] & 0x80) != 0)) {
+            a.setBytes(aBytes, (short)1, (short)(aBytes.length - 1));
+        } else {
+            a.setBytes(aBytes);
+        }
+        if (bBytes.length < byteLength) {
+            byte[] bytesPadded = new byte[byteLength];
+            Util.arrayCopy(bBytes, (short)0, bytesPadded, (short)(bytesPadded.length - bBytes.length), (short)bBytes.length);
+            b.setBytes(bytesPadded);
+        } else if ((bBytes.length > byteLength) && (bBytes[0] == 0) && ((bBytes[1] & 0x80) != 0)) {
+            b.setBytes(bBytes, (short)1, (short)(bBytes.length - 1));
+        } else {
+            b.setBytes(bBytes);
+        }
         // generator
         g.setBytes(parameters.getG().getEncoded());
         // order
-        r.setBigInteger(parameters.getN());
+        byte[] rBytes = parameters.getN().toByteArray();
+        if (rBytes.length < byteLength) {
+            byte[] bytesPadded = new byte[byteLength];
+            Util.arrayCopy(bBytes, (short)0, bytesPadded, (short)(bytesPadded.length - rBytes.length), (short)rBytes.length);
+            r.setBytes(bytesPadded);
+        } else if ((rBytes.length > byteLength) && (rBytes[0] == 0) && ((rBytes[1] & 0x80) != 0)) {
+            r.setBytes(rBytes, (short)1, (short)(rBytes.length - 1));
+        } else {
+            r.setBytes(rBytes);
+        }
         // cofactor
         setK(parameters.getH().shortValue());
         if (parameters.getCurve() instanceof ECCurve.Fp) {
             ECCurve.Fp ecfp = (ECCurve.Fp) parameters.getCurve();
-            fp.setBigInteger(ecfp.getQ());
+            byte[] fpBytes = ecfp.getQ().toByteArray();
+            if (fpBytes.length < byteLength) {
+                byte[] bytesPadded = new byte[byteLength];
+                Util.arrayCopy(fpBytes, (short)0, bytesPadded, (short)(bytesPadded.length - fpBytes.length), (short)fpBytes.length);
+                fp.setBytes(bytesPadded);
+            } else if ((fpBytes.length > byteLength) && (fpBytes[0] == 0) && ((fpBytes[1] & 0x80) != 0)) {
+                fp.setBytes(fpBytes, (short)1, (short)(fpBytes.length - 1));
+            } else {
+                fp.setBytes(fpBytes);
+            }
         } else {
             ECCurve.F2m ecf2m = (ECCurve.F2m) parameters.getCurve();
             setFieldF2M((short) ecf2m.getK1(), (short) ecf2m.getK2(), (short) ecf2m.getK3());
@@ -213,7 +252,7 @@ public abstract class ECKeyImpl extends KeyImpl implements ECKey {
      * @return parameters for use with BouncyCastle API
      */
     public KeyGenerationParameters getKeyGenerationParameters(SecureRandom rnd) {
-        if (isDomainParametersInitialized()) {
+        if (!isDomainParametersInitialized()) {
             return new ECKeyGenerationParameters(getDomainParameters(), rnd);
         }
         return new ECKeyGenerationParameters(getDefaultsDomainParameters(type, size), rnd);

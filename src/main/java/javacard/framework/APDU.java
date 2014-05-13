@@ -4,6 +4,8 @@
  */
 package javacard.framework;
 
+import at.mroland.objectstaterecovery.PersistentMemory;
+import com.licel.jcardsim.base.SimulatorConfig;
 import com.licel.jcardsim.base.SimulatorSystem;
 
 /**
@@ -14,7 +16,7 @@ import com.licel.jcardsim.base.SimulatorSystem;
  * 
  * This class only supports messages which conform to the structure of
  * command and response defined in ISO 7816-4. The behavior of messages which
- * use proprietary structure of messages is
+ * use proprietary structure of messages ( for example with header CLA byte in range 0xD0-0xFE ) is
  * undefined. This class optionally supports extended length fields but only when
  * the currently selected applet implements the <code>javacardx.apdu.ExtendedLength</code> interface.<p>
  * 
@@ -179,7 +181,7 @@ public final class APDU {
     /**
      * This error state of a <CODE>APDU</CODE> object occurs when an <CODE>APDUException</CODE>
      * with reason code <CODE>APDUException.IO_ERROR</CODE> has been
-     * thrown
+     * thrown.
      */
     public static final byte STATE_ERROR_IO = -3;
     /**
@@ -189,13 +191,13 @@ public final class APDU {
      */
     public static final byte STATE_ERROR_NO_T0_REISSUE = -4;
     /**
-     * Media nibble mask in protocol byte
+     * Media nibble mask in protocol byte.
      */
-    public static final byte PROTOCOL_MEDIA_MASK = -16;
+    public static final byte PROTOCOL_MEDIA_MASK = (byte)0xF0;
     /**
-     * Type nibble mask in protocol byte
+     * Type nibble mask in protocol byte.
      */
-    public static final byte PROTOCOL_TYPE_MASK = 15;
+    public static final byte PROTOCOL_TYPE_MASK = (byte)0x0F;
     /**
      * ISO 7816 transport protocol type T=0.
      */
@@ -206,69 +208,161 @@ public final class APDU {
      */
     public static final byte PROTOCOL_T1 = 1;
     /**
-     * Transport protocol Media - Contacted Asynchronous Half Duplex
+     * Transport protocol Media - Contacted Asynchronous Half Duplex.
      */
-    public static final byte PROTOCOL_MEDIA_DEFAULT = 0;
+    public static final byte PROTOCOL_MEDIA_DEFAULT = (byte)0x00;
     /**
-     * Transport protocol Media - Contactless Type A
+     * Transport protocol Media - Contactless Type A.
      */
-    public static final byte PROTOCOL_MEDIA_CONTACTLESS_TYPE_A = -128;
+    public static final byte PROTOCOL_MEDIA_CONTACTLESS_TYPE_A = (byte)0x80;
     /**
-     * Transport protocol Media - Contactless Type B
+     * Transport protocol Media - Contactless Type B.
      */
-    public static final byte PROTOCOL_MEDIA_CONTACTLESS_TYPE_B = -112;
+    public static final byte PROTOCOL_MEDIA_CONTACTLESS_TYPE_B = (byte)0x90;
     /**
-     * Transport protocol Media - USB
+     * Transport protocol Media - USB.
      */
-    public static final byte PROTOCOL_MEDIA_USB = -96;
-    // buffer size
-    private static final short BUFFER_SIZE = 260;
-    // input block size, for T0 protocol = 1
-    private static final short T0_IBS = 1;
-    // output block size, for T0 protocol = 258
-    private static final short T0_OBS = 258;
-    // NAD, for T0 protocol = 9
-    private static final byte T0_NAD = 0;
-    // transient array to store variables
-    private byte[] ramVars;
-    // LE variable offset in ramVars
-    private static final byte LE = 0;
-    // LR variable offset in ramVars
-    private static final byte LR = 1;
-    // LC variable offset in ramVars
-    private static final byte LC = 2;
-    // PRE_READ_LENGTH variable offset in ramVars
-    private static final byte PRE_READ_LENGTH = 3;
-    // CURRENT_STATE variable offset in ramVars
-    private static final byte CURRENT_STATE = 4;
-    // LOGICAL_CHN variable offset in ramVars
-    private static final byte LOGICAL_CHN = 5;
-    // total length ramVars
-    private static final byte RAM_VARS_LENGTH = 6;
-    // transient array to store boolean flags
-    private boolean[] flags;
-    // outgoingFlag;
-    private static final byte OUTGOING_FLAG = 0;
-    // outgoingLenSetFlag;
-    private static final byte OUTGOING_LEN_SET_FLAG = 1;
-    // noChainingFlag;
-    private static final byte NO_CHAINING_FLAG = 2;
-    // incomingFlag;
-    private static final byte INCOMING_FLAG = 3;
-    // notGetResponseFlag;
-    private static final byte NO_GET_RESPONSE_FLAG = 4;
-    // total length flags
-    private static final byte FLAGS_LENGTH = 5;
-    //
+    public static final byte PROTOCOL_MEDIA_USB = (byte)0xA0;
+    
+    /**
+     * APDU buffer.
+     */
     private byte[] buffer;
-    // reference to this
-    private static APDU thisAPDU;
+    /**
+     * APDU buffer size.
+     */
+    private static final short BUFFER_SIZE = SimulatorConfig.APDU_BUFFER_SIZE;
+    
+    /**
+     * Fixed input block size for T=0 protocol = 1.
+     */
+    private static final short T0_IBS = 1;
+    /**
+     * Fixed output block size for T=0 protocol = 258.
+     */
+    private static final short T0_OBS = 258;
+    /**
+     * Fixed NAD for T=0 protocol = 0.
+     */
+    private static final byte T0_NAD = 0;
+    
+    /**
+     * Transient array to store short-typed variables.
+     */
+    private short[] ramVarsShort;
+    /**
+     * Ne (CAD expected length) variable offset in ramVarsShort.
+     */
+    private static final byte RV_SHORT_NE = 0;
+    /**
+     * Lr (Applet response length set via setOutgoingLength method) variable offset in ramVarsShort.
+     */
+    private static final byte RV_SHORT_LR = RV_SHORT_NE+1;
+    /**
+     * Remaining bytes to be sent (Lr - already sent bytes) variable offset in ramVarsShort.
+     */
+    private static final byte RV_SHORT_LR_REMAINING = RV_SHORT_LR+1;
+    /**
+     * Nc (received data length) variable offset in ramVarsShort.
+     */
+    private static final byte RV_SHORT_NC = RV_SHORT_LR_REMAINING+1;
+    /**
+     * Remaining bytes to be received (Nc - already received bytes) variable offset in ramVarsShort.
+     */
+    private static final byte RV_SHORT_NC_REMAINING = RV_SHORT_NC+1;
+    /**
+     * Total length of ramVarsShort.
+     */
+    private static final byte RAM_VARS_SHORT_LENGTH = RV_SHORT_NC_REMAINING+1;
 
+    /**
+     * Transient array to store byte-typed variables.
+     */
+    private byte[] ramVarsByte;
+    /**
+     * CURRENT_STATE variable offset in ramVarsByte.
+     */
+    private static final byte RV_BYTE_CURRENT_STATE = 0;
+    /**
+     * LOGICAL_CHANNEL variable offset in ramVarsByte.
+     */
+    private static final byte RV_BYTE_LOGICAL_CHANNEL = RV_BYTE_CURRENT_STATE+1;
+    /**
+     * CLA byte variable offset in ramVarsByte.
+     */
+    private static final byte RV_BYTE_CLA_BYTE = RV_BYTE_LOGICAL_CHANNEL+1;
+    /**
+     * Total length of ramVarsByte.
+     */
+    private static final byte RAM_VARS_BYTE_LENGTH = RV_BYTE_CLA_BYTE+1;
+    
+    /**
+     * Transient array to store boolean flags.
+     */
+    private boolean[] flags;
+    /**
+     * Outgoing flag.
+     */
+    private static final byte FLAG_OUTGOING = 0;
+    /**
+     * Outgoing length set flag.
+     */
+    private static final byte FLAG_OUTGOING_LEN_SET = FLAG_OUTGOING+1;
+    /**
+     * No chaining flag.
+     */
+    private static final byte FLAG_NO_CHAINING = FLAG_OUTGOING_LEN_SET+1;
+    /**
+     * Incoming flag.
+     */
+    private static final byte FLAG_INCOMING = FLAG_NO_CHAINING+1;
+    /**
+     * No GET RESPONSE flag.
+     */
+    private static final byte FLAG_NO_GET_RESPONSE = FLAG_INCOMING+1;
+    /**
+     * No command re-issue response flag.
+     */
+    private static final byte FLAG_NO_REISSUE = FLAG_NO_GET_RESPONSE+1;
+    /**
+     * Extended length indication flag.
+     */
+    private static final byte FLAG_EXTENDED_LENGTH = FLAG_NO_REISSUE+1;
+    /**
+     * Total length of flags.
+     */
+    private static final byte FLAGS_LENGTH = FLAG_EXTENDED_LENGTH+1;
+    
+    /**
+     * Maximum value of Ne for regular-length APDUs.
+     */
+    private static final short NE_MAX = 256;
+    /**
+     * Maximum value of Ne for extended-length APDUs.
+     */
+    private static final short NE_MAX_EXTENDED = 32767;  //65536;
+    
+    /**
+     * Reference to global APDU instance.
+     */
+    private static final APDU thisAPDU;
+    
+    static {
+        thisAPDU = new APDU();
+        PersistentMemory pm = SimulatorSystem.getPersistentMemoryInstance();
+        pm.addProhibitedClass(APDU.class);
+        pm.addProhibitedReference(thisAPDU);
+        pm.addProhibitedReference(thisAPDU.buffer);
+        pm.addProhibitedReference(thisAPDU.ramVarsByte);
+        pm.addProhibitedReference(thisAPDU.ramVarsShort);
+        pm.addProhibitedReference(thisAPDU.flags);
+    }
+    
     APDU() {
         buffer = JCSystem.makeTransientByteArray(BUFFER_SIZE, JCSystem.CLEAR_ON_RESET);
-        ramVars = JCSystem.makeTransientByteArray(RAM_VARS_LENGTH, JCSystem.CLEAR_ON_RESET);
+        ramVarsByte = JCSystem.makeTransientByteArray(RAM_VARS_BYTE_LENGTH, JCSystem.CLEAR_ON_RESET);
+        ramVarsShort = JCSystem.makeTransientShortArray(RAM_VARS_SHORT_LENGTH, JCSystem.CLEAR_ON_RESET);
         flags = JCSystem.makeTransientBooleanArray(FLAGS_LENGTH, JCSystem.CLEAR_ON_RESET);
-        thisAPDU = this;
     }
 
     /**
@@ -302,7 +396,12 @@ public final class APDU {
      * @see #receiveBytes(short)
      */
     public static short getInBlockSize() {
-        return T0_IBS;
+        byte protocol = getProtocol();
+        if ((protocol & PROTOCOL_TYPE_MASK) == PROTOCOL_T0) {
+            return T0_IBS;
+        } else {
+            return SimulatorSystem.getInBlockSize(protocol);
+        }
     }
 
     /**
@@ -321,7 +420,12 @@ public final class APDU {
      * @see #setOutgoingLength(short)
      */
     public static short getOutBlockSize() {
-        return T0_OBS;
+        byte protocol = getProtocol();
+        if ((protocol & PROTOCOL_TYPE_MASK) == PROTOCOL_T0) {
+            return T0_OBS;
+        } else {
+            return SimulatorSystem.getOutBlockSize(protocol);
+        }
     }
 
     /**
@@ -332,7 +436,7 @@ public final class APDU {
      * @see <CODE>PROTOCOL_T0</CODE>
      */
     public static byte getProtocol() {
-        return PROTOCOL_T0;
+        return SimulatorSystem.getCurrentProtocol();
     }
 
     /**
@@ -342,189 +446,278 @@ public final class APDU {
      * @return NAD transport byte as defined in ISO 7816-3
      */
     public byte getNAD() {
-        return T0_NAD;
+        byte protocol = getProtocol();
+        if ((protocol & PROTOCOL_TYPE_MASK) == PROTOCOL_T0) {
+            return T0_NAD;
+        } else {
+            return SimulatorSystem.getNAD(protocol);
+        }
     }
 
     /**
      * This method is used to set the data transfer direction to
-     * outbound and to obtain the expected length of response (Le). This method
-     * should only be called on a case 2 or case 4 command, otherwise erroneous
-     * behavior may result.
-     * <p>Notes. <ul>
-     * <li><em>On a case 4 command, the </em><code>setIncomingAndReceive()</code><em> must
-     * be invoked prior to calling this method. Otherwise, erroneous
+     * outbound and to obtain the expected length of response (Le).
+     * This method should only be called on a case 2 or case 4 command,
+     * otherwise erroneous behavior may result.
+     * <p>Notes.
+     * <ul>
+     * <li><em>On a case 4 command, the <code>setIncomingAndReceive()</code>
+     * must be invoked prior to calling this method. Otherwise, erroneous
      * behavior may result in T=0 protocol.</em>
      * <li><em>Any remaining incoming data will be discarded.</em>
-     * <li><em>In T=0 (Case 4S) protocol, this method will return 256 with normal
-     * semantics.</em>
-     * <li><em>In T=0 (Case 2E, 4S) protocol, this method will return 32767 when
-     * the currently selected applet implements the
-     * </em><code>javacardx.apdu.ExtendedLength</code><em> interface.</em>
-     * <li><em>In T=1 (Case 2E, 4E) protocol, this method will return 32767 when the
-     * Le field in the APDU command is 0x0000 and the currently selected applet implements the
-     * </em><code>javacardx.apdu.ExtendedLength</code><em> interface.</em>
-     * <li><em>This method sets the state of the </em><code>APDU</code><em> object to
-     * </em><code>STATE_OUTGOING</code><em>.</em>
+     * <li><em>In T=0 (Case 4S) protocol, this method will return 256 with
+     * normal semantics.</em>
+     * <li><em>In T=0 (Case 2E, 4S) protocol, this method will return 32767
+     * when the currently selected applet implements the
+     * <code>javacardx.apdu.ExtendedLength</code> interface.</em>
+     * <li><em>In T=1 (Case 2E, 4E) protocol, this method will return 32767
+     * when the Le field in the APDU command is 0x0000 and the currently
+     * selected applet implements the <code>javacardx.apdu.ExtendedLength</code>
+     * interface.</em>
+     * <li><em>This method sets the state of the <code>APDU</code> object to
+     * <code>STATE_OUTGOING</code>.</em>
      * </ul>
      * @return Le, the expected length of response
      * @throws APDUException with the following reason codes:<ul>
      * <li><code>APDUException.ILLEGAL_USE</code> if this method, or <code>setOutgoingNoChaining()</code> method already invoked.
      * <li><code>APDUException.IO_ERROR</code> on I/O error.
+     * </ul>
      */
-    public short setOutgoing()
-            throws APDUException {
-        if (flags[OUTGOING_FLAG]) {
+    public short setOutgoing() throws APDUException {
+        if (flags[FLAG_OUTGOING]) {
             APDUException.throwIt(APDUException.ILLEGAL_USE);
         }
-        flags[OUTGOING_FLAG] = true;
-        ramVars[CURRENT_STATE] = STATE_OUTGOING;
-        return getLe();
+        flags[FLAG_OUTGOING] = true;
+        ramVarsByte[RV_BYTE_CURRENT_STATE] = STATE_OUTGOING;
+        
+        ramVarsShort[RV_SHORT_NE] = SimulatorSystem.receiveNe();
+        
+        if ((getProtocol() & PROTOCOL_TYPE_MASK) == PROTOCOL_T0) {
+            if (ramVarsShort[RV_SHORT_NE] == 0) {
+                if (flags[FLAG_EXTENDED_LENGTH]) {
+                    ramVarsShort[RV_SHORT_NE] = NE_MAX_EXTENDED;
+                } else {
+                    ramVarsShort[RV_SHORT_NE] = NE_MAX;
+                }
+            }            
+        }
+        
+        return ramVarsShort[RV_SHORT_NE];
     }
 
     /**
-     * This method is used to set the data transfer direction to
-     * outbound without using BLOCK CHAINING (See ISO 7816-3/4) and to obtain the expected length of response (Le).
-     * This method should be used in place of the
-     * <code>setOutgoing()</code> method by applets which need
-     * to be compatible with legacy CAD/terminals which do not support ISO 7816-3/4 defined block chaining.
-     * See <em>Runtime Environment
-     * Specification for the Java Card Platform</em>, section 9.4 for details.
-     * <p>Notes. <ul>
-     * <li><em>On a case 4 command, the </em><code>setIncomingAndReceive()</code><em> must
-     * be invoked prior to calling this method. Otherwise, erroneous
+     * This method is used to set the data transfer direction to outbound
+     * without using BLOCK CHAINING (See ISO 7816-3/4) and to obtain the
+     * expected length of response (Le).
+     * This method should be used in place of the <code>setOutgoing()</code>
+     * method by applets which need to be compatible with legacy CAD/terminals
+     * which do not support ISO 7816-3/4 defined block chaining. See
+     * <em>Runtime Environment Specification for the Java Card Platform</em>,
+     * section 9.4 for details.
+     * <p>Notes.
+     * <ul>
+     * <li><em>On a case 4 command, the <code>setIncomingAndReceive()</code>
+     * must be invoked prior to calling this method. Otherwise, erroneous
      * behavior may result in T=0 protocol.</em>
      * <li><em>Any remaining incoming data will be discarded.</em>
-     * <li><em>In T=0 (Case 4S) protocol, this method will return 256 with normal
-     * semantics.</em>
+     * <li><em>In T=0 (Case 4S) protocol, this method will return 256 with
+     * normal semantics.</em>
      * <li><em>In T=0 (Case 2E, 4S) protocol, this method will return 256 when
      * the currently selected applet implements the
-     * </em><code>javacardx.apdu.ExtendedLength</code><em> interface.</em>
-     * <li><em>When this method is used, the </em><code>waitExtension()</code><em> method cannot be used.</em>
+     * <code>javacardx.apdu.ExtendedLength</code> interface.</em>
+     * <li><em>When this method is used, the <code>waitExtension()</code>
+     * method cannot be used.</em>
      * <li><em>In T=1 protocol, retransmission on error may be restricted.</em>
      * <li><em>In T=0 protocol, the outbound transfer must be performed
-     * without using </em><code>(ISO7816.SW_BYTES_REMAINING_00+count)</code><em> response status chaining.</em>
-     * <li><em>In T=1 protocol, the outbound transfer must not set the More(M) Bit in the PCB of the I block. See ISO 7816-3.</em>
-     * <li><em>This method sets the state of the </em><code>APDU</code><em> object to
-     * </em><code>STATE_OUTGOING</code><em>.</em>
+     * without using <code>(ISO7816.SW_BYTES_REMAINING_00+count)</code>
+     * response status chaining.</em>
+     * <li><em>In T=1 protocol, the outbound transfer must not set the
+     * More(M) Bit in the PCB of the I block. See ISO 7816-3.</em>
+     * <li><em>This method sets the state of the <code>APDU</code> object to
+     * <code>STATE_OUTGOING</code>.</em>
      * </ul>
-     * 
      * @return Le, the expected length of response data
      * @throws APDUException with the following reason codes:<ul>
-     * <li><code>APDUException.ILLEGAL_USE</code> if this method, or <code>setOutgoingNoChaining()</code> method already invoked.
-     * <li><code>APDUException.IO_ERROR</code> on I/O error.
+     * <li><code>APDUException.ILLEGAL_USE</code> if this method, or <code>setOutgoing()</code> method already invoked.
+     * <li><code>APDUException.IO_ERROR</code> on I/O error</ul>
      */
-    public short setOutgoingNoChaining()
-            throws APDUException {
-        if (flags[OUTGOING_FLAG]) {
+    public short setOutgoingNoChaining() throws APDUException {
+        if (flags[FLAG_OUTGOING]) {
             APDUException.throwIt(APDUException.ILLEGAL_USE);
         }
-        flags[OUTGOING_FLAG] = true;
-        flags[NO_CHAINING_FLAG] = true;
-        ramVars[CURRENT_STATE] = STATE_OUTGOING;
-        return getLe();
+        flags[FLAG_OUTGOING] = true;
+        flags[FLAG_NO_CHAINING] = true;
+        ramVarsByte[RV_BYTE_CURRENT_STATE] = STATE_OUTGOING;
+
+        ramVarsShort[RV_SHORT_NE] = SimulatorSystem.receiveNe();
+        
+        if ((getProtocol() & PROTOCOL_TYPE_MASK) == PROTOCOL_T0) {
+            if ((ramVarsShort[RV_SHORT_NE] == 0) || (ramVarsShort[RV_SHORT_NE] > NE_MAX)) {
+              ramVarsShort[RV_SHORT_NE] = NE_MAX;
+            }
+        }
+        
+        return ramVarsShort[RV_SHORT_NE];
     }
 
     /**
-     * Sets the actual length of response data. If a length of
-     * <code>0</code> is specified, no data will be output.
+     * Sets the actual length of response data. If a length of <code>0</code> is specified, no data will be output.
      * <p>Note:<ul>
      * <li><em>In T=0 (Case 2&4) protocol, the length is used by the Java Card runtime environment to prompt the CAD for GET RESPONSE commands.</em>
-     * <li><em>This method sets the state of the
-     * <code>APDU</code> object to
+     * <li><em>This method sets the state of the <code>APDU</code> object to
      * <code>STATE_OUTGOING_LENGTH_KNOWN</code>.</em>
      * </ul>
-     * <P>
-     *
      * @param len the length of response data
-     * @throws APDUException with the following reason codes:<ul> 
-     * <li><code>APDUException.ILLEGAL_USE</code> if <code>setOutgoing()</code> or <code>setOutgoingNoChaining()</code> not called 
-     * or if <code>setOutgoingAndSend()</code> already invoked, or this method already invoked. 
-     * <li><code>APDUException.BAD_LENGTH</code> if any one of the following is true:<ul>
-     * <li><code>len</code> is negative.
-     * <li><code>len</code> is greater than 256 and the currently selected applet does not implement the <code>javacardx.apdu.ExtendedLength</code> interface. 
-     * <li>T=0 protocol is in use, non BLOCK CHAINED data transfer is requested and len is greater than 256. 
-     * <li>T=1 protocol is in use, non BLOCK CHAINED data transfer is requested and len is greater than (IFSD-2), where IFSD is the Outgoing Block Size. The -2 accounts for the status bytes in T=1.
+     * @throws APDUException  with the following reason codes:<ul>
+     * <li><code>APDUException.ILLEGAL_USE</code> if <code>setOutgoing()</code>
+     * or <code>setOutgoingNoChaining()</code> not called or if
+     * <code>setOutgoingAndSend()</code> already invoked, or this method
+     * already invoked.
+     * <li><code>APDUException.BAD_LENGTH</code> if any one of the following is
+     * true:
+     * <ul>
+     * <li><code>len</code> is negative.</li>
+     * <li><code>len</code> is greater than 256 and the currently selected
+     * applet does not implement the <code>javacardx.apdu.ExtendedLength</code>
+     * interface.</li>
+     * <li>T=0 protocol is in use, non BLOCK CHAINED data transfer is requested
+     * and <code>len</code> is greater than 256.</li>
+     * <li>T=1 protocol is in use, non BLOCK CHAINED data transfer is requested
+     * and <code>len</code> is greater than (IFSD-2), where IFSD is the
+     * Outgoing Block Size. The -2 accounts for the status bytes in T=1.</li>
      * </ul>
-     * <li><code>APDUException.NO_T0_GETRESPONSE</code> if T=0 protocol is in use and the CAD does not respond to <code>(ISO7816.SW_BYTES_REMAINING_00+count)</code> response status 
-     * with GET RESPONSE command on the same origin logical channel number as that of the current APDU command. 
-     * <li><code>APDUException.NO_T0_REISSUE</code> if T=0 protocol 
-     * is in use and the CAD does not respond to <code>(ISO7816.SW_CORRECT_LENGTH_00+count)</code> response status by re-issuing same APDU command on the same origin 
-     * logical channel number as that of the current APDU command with the corrected length. 
+     * <li><code>APDUException.NO_T0_GETRESPONSE</code> if T=0 protocol is in
+     * use and the CAD does not respond to <code>(ISO7816.SW_BYTES_REMAINING_00+count)</code>
+     * response status with GET RESPONSE command on the same origin logical
+     * channel number as that of the current APDU command.
+     * <li><code>APDUException.NO_T0_REISSUE</code> if T=0 protocol is in use
+     * and the CAD does not respond to <code>(ISO7816.SW_CORRECT_LENGTH_00+count)</code>
+     * response status by re-issuing same APDU command on the same origin
+     * logical channel number as that of the current APDU command with the
+     * corrected length.
      * <li><code>APDUException.IO_ERROR</code> on I/O error.
+     * </ul>
      * @see #getOutBlockSize()
      */
-    public void setOutgoingLength(short len)
-            throws APDUException {
-        if (!flags[OUTGOING_FLAG]) {
+    public void setOutgoingLength(short len) throws APDUException {
+        if (!flags[FLAG_OUTGOING]) {
             APDUException.throwIt(APDUException.ILLEGAL_USE);
         }
-        if (flags[OUTGOING_LEN_SET_FLAG]) {
+        if (flags[FLAG_OUTGOING_LEN_SET]) {
             APDUException.throwIt(APDUException.ILLEGAL_USE);
         }
-        if (len > 255 || len < 0) {
+        if (len < 0) {
             APDUException.throwIt(APDUException.BAD_LENGTH);
         }
-        flags[OUTGOING_LEN_SET_FLAG] = true;
-        ramVars[CURRENT_STATE] = STATE_OUTGOING_LENGTH_KNOWN;
-        ramVars[LR] = (byte) len;
+        if (flags[FLAG_EXTENDED_LENGTH]) {
+            if (len > NE_MAX_EXTENDED) {
+                APDUException.throwIt(APDUException.BAD_LENGTH);
+            }
+        } else {
+            if (len > NE_MAX) {
+                APDUException.throwIt(APDUException.BAD_LENGTH);
+            }
+        }
+        if (flags[FLAG_NO_CHAINING]) {
+            if (len > (getOutBlockSize() - 2)) {
+                APDUException.throwIt(APDUException.BAD_LENGTH);
+            }
+        }
+        
+        if ((getProtocol() & PROTOCOL_TYPE_MASK) == PROTOCOL_T0) {
+            // TODO: Implement command reissuance and GET RESPONSE processing for T=0
+        }
+        
+        flags[FLAG_OUTGOING_LEN_SET] = true;
+        ramVarsByte[RV_BYTE_CURRENT_STATE] = STATE_OUTGOING_LENGTH_KNOWN;
+        ramVarsShort[RV_SHORT_LR] = len;
+        ramVarsShort[RV_SHORT_LR_REMAINING] = len;
     }
 
-    public short receiveBytes(short bOff)
-            throws APDUException {
-        if (!flags[INCOMING_FLAG] || flags[OUTGOING_FLAG]) {
+    /**
+     * Gets as many data bytes as will fit without APDU buffer overflow,
+     * at the specified offset <code>bOff</code>.
+     * Gets all the remaining bytes if they fit.
+     * <p>Notes:
+     * <ul>
+     * <li><em>The space in the buffer must allow for incoming block size.</em>
+     * <li><em>In T=1 protocol, if all the remaining bytes do not fit in the
+     * buffer, this method may return less bytes than the maximum incoming
+     * block size (IFSC).</em>
+     * <li><em>In T=0 protocol, if all the remaining bytes do not fit in the
+     * buffer, this method may return less than a full buffer of bytes to
+     * optimize and reduce protocol overhead.</em>
+     * <li><em>In T=1 protocol, if this method throws an <code>APDUException</code>
+     * with <code>T1_IFD_ABORT</code> reason code, the Java Card runtime
+     * environment will restart APDU command processing using the newly
+     * received command. No more input data can be received. No output data can
+     * be transmitted. No error status response can be returned.</em>
+     * <li><em>This method sets the state of the <code>APDU</code> object to
+     * <code>STATE_PARTIAL_INCOMING</code> if all incoming bytes are not
+     * received.</em>
+     * <li><em>This method sets the state of the <code>APDU</code> object to
+     * <code>STATE_FULL_INCOMING</code> if all incoming bytes are received.</em>
+     * </ul>
+     * @param bOff - the offset into APDU buffer
+     * @return number of bytes read. Returns 0 if no bytes are available.
+     * @throws APDUException - with the following reason codes:<ul>
+     * <li><code>APDUException.ILLEGAL_USE</code> if <code>setIncomingAndReceive()</code>
+     * not called or if <code>setOutgoing()</code> or <code>setOutgoingNoChaining()</code>
+     * previously invoked.
+     * <li><code>APDUException.BUFFER_BOUNDS</code> if not enough buffer space
+     * for incoming block size.
+     * <li><code>APDUException.IO_ERROR</code> on I/O error.
+     * <li><code>APDUException.T1_IFD_ABORT</code> if T=1 protocol is in use
+     * and the CAD sends in an ABORT S-Block command to abort the data transfer.
+     * @see #getInBlockSize()
+     */
+    public short receiveBytes(short bOff) throws APDUException {
+        if (!flags[FLAG_INCOMING] || flags[FLAG_OUTGOING]) {
             APDUException.throwIt(APDUException.ILLEGAL_USE);
         }
-        short Lc = (short) (ramVars[LC] & 0xff);
-        if (bOff < 0 || Lc >= 1 && (short) (bOff + 1) > 260) {
+        short ncRemaining = ramVarsShort[RV_SHORT_NC_REMAINING];
+        if ((bOff < 0) || ((ncRemaining > 0) && (bOff >= BUFFER_SIZE))) {
             APDUException.throwIt(APDUException.BUFFER_BOUNDS);
         }
-        short pre = (short) (ramVars[PRE_READ_LENGTH] & 0xff);
-        if (pre != 0) {
-            ramVars[PRE_READ_LENGTH]=(byte) 0;
-            if (Lc == 0) {
-                ramVars[CURRENT_STATE]= STATE_FULL_INCOMING;
+        if (ncRemaining != 0) {
+            short len = (short) (BUFFER_SIZE - bOff);
+            if (len > ncRemaining) len = ncRemaining;
+            ncRemaining = SimulatorSystem.receiveAPDU(buffer, bOff, len);
+            ramVarsShort[RV_SHORT_NC_REMAINING] = ncRemaining;
+            if (ncRemaining == 0) {
+                ramVarsByte[RV_BYTE_CURRENT_STATE] = STATE_FULL_INCOMING;
             } else {
-                ramVars[CURRENT_STATE]= STATE_PARTIAL_INCOMING;
-            }
-            return pre;
-        }
-        if (Lc != 0) {
-            short len = 0;
-            if(buffer[ISO7816.OFFSET_LC] != 0) {
-                len = (short) (buffer[ISO7816.OFFSET_LC] & 0xff);
-            }
-            Lc -= len;
-            ramVars[LC] = (byte) Lc;
-            if (Lc == 0) {
-                ramVars[CURRENT_STATE]= STATE_FULL_INCOMING;
-            } else {
-                ramVars[CURRENT_STATE] = STATE_PARTIAL_INCOMING;
+                ramVarsByte[RV_BYTE_CURRENT_STATE] = STATE_PARTIAL_INCOMING;
             }
             return len;
         } else {
-            ramVars[CURRENT_STATE]= STATE_FULL_INCOMING;
+            ramVarsByte[RV_BYTE_CURRENT_STATE] = STATE_FULL_INCOMING;
             return 0;
         }
     }
 
     /**
      * This is the primary receive method.
-     * Calling this method indicates that this APDU has incoming data. This method gets as many bytes
-     * as will fit without buffer overflow in the APDU buffer following the header.
-     * It gets all the incoming bytes if they fit.<p>
-     * This method should only be called on a case 3 or case 4 command, otherwise erroneous behavior may result.
+     * Calling this method indicates that this APDU has incoming data. This
+     * method gets as many bytes as will fit without buffer overflow in the
+     * APDU buffer following the header. It gets all the incoming bytes if
+     * they fit.
+     * <p>This method should only be called on a case 3 or case 4 command,
+     * otherwise erroneous behavior may result.
      * <p>Notes:
      * <ul>
      * <li><em>In T=0 ( Case 3&4 ) protocol, the P3 param is assumed to be Lc.</em>
      * <li><em>Data is read into the buffer at offset 5 for normal APDU semantics.</em>
      * <li><em>Data is read into the buffer at offset 7 for an extended length APDU (Case 3E/4E).</em>
-     * <li><em>In T=1 protocol, if all the incoming bytes do not fit in the buffer, this method may
-     * return less bytes than the maximum incoming block size (IFSC).</em>
-     * <li><em>In T=0 protocol, if all the incoming bytes do not fit in the buffer, this method may
-     * return less than a full buffer of bytes to optimize and reduce protocol overhead.</em>
-     * <li><em>This method sets the transfer direction to be inbound
-     * and calls <code>receiveBytes(5)</code> for normal semantics or <code>receiveBytes(7)</code> for extended semantics.</em>
-     * <li><em>This method may only be called once in a </em><code>Applet.process()</code><em> method.</em>
+     * <li><em>In T=1 protocol, if all the incoming bytes do not fit in the buffer,
+     * this method may return less bytes than the maximum incoming block size (IFSC).</em>
+     * <li><em>In T=0 protocol, if all the incoming bytes do not fit in the buffer,
+     * this method may return less than a full buffer of bytes to optimize and
+     * reduce protocol overhead.</em>
+     * <li><em>This method sets the transfer direction to be inbound and calls
+     * <code>receiveBytes(5)</code> for normal semantics or
+     * <code>receiveBytes(7)</code> for extended semantics.</em>
+     * <li><em>This method may only be called once in a <code>Applet.process()</code> method.</em>
      * <li><em>This method sets the state of the <code>APDU</code> object to
      * <code>STATE_PARTIAL_INCOMING</code> if all incoming bytes are not received.</em>
      * <li><em>This method sets the state of the <code>APDU</code> object to
@@ -540,50 +733,109 @@ public final class APDU {
      *  <li><code>APDUException.T1_IFD_ABORT</code> if T=1 protocol is in use and the CAD sends
      * in an ABORT S-Block command to abort the data transfer.
      * </ul>
+     * @see #getIncomingLength()
+     * @see #getOffsetCdata()
      */
-    public short setIncomingAndReceive()
-            throws APDUException {
-        if (ramVars[PRE_READ_LENGTH] == 0) {
-            if (flags[INCOMING_FLAG] || flags[OUTGOING_FLAG]) {
-                APDUException.throwIt(APDUException.ILLEGAL_USE);
-            }
-            flags[INCOMING_FLAG] = true;
-            byte Lc = (byte) (buffer[ISO7816.OFFSET_LC]);
-            ramVars[LC] = Lc;
-            ramVars[LE] = (byte) 0;
-        }
-        return receiveBytes(ISO7816.OFFSET_CDATA);
-    }
-
-    public void sendBytes(short bOff, short len)
-            throws APDUException {
-        if (bOff < 0 || len < 0 || (short) (bOff + len) > 255) {
-            APDUException.throwIt(APDUException.BUFFER_BOUNDS);
-        }
-        if (!flags[OUTGOING_LEN_SET_FLAG] || flags[NO_GET_RESPONSE_FLAG]) {
+    public short setIncomingAndReceive() throws APDUException {
+        if (flags[FLAG_INCOMING] || flags[FLAG_OUTGOING]) {
             APDUException.throwIt(APDUException.ILLEGAL_USE);
         }
+        flags[FLAG_INCOMING] = true;
+        
+        ramVarsShort[RV_SHORT_NC_REMAINING] = ramVarsShort[RV_SHORT_NC];
+
+        if (flags[FLAG_EXTENDED_LENGTH]) {
+            return receiveBytes(ISO7816.OFFSET_EXT_CDATA);
+        } else {
+            return receiveBytes(ISO7816.OFFSET_CDATA);
+        }
+    }
+
+    /**
+     * Sends <code>len</code> more bytes from APDU buffer at specified offset
+     * <code>bOff</code>.
+     * <p>If the last part of the response is being sent by the invocation
+     * of this method, the APDU buffer must not be altered. If the data is
+     * altered, incorrect output may be sent to the CAD. Requiring that the
+     * buffer not be altered allows the implementation to reduce protocol
+     * overhead by transmitting the last part of the response along with the
+     * status bytes.
+     * <p>Notes:
+     * <ul>
+     * <li><em>If </em><code>setOutgoingNoChaining()</code><em> was invoked, output block chaining must not be used.</em>
+     * <li><em>In T=0 protocol, if <code>setOutgoingNoChaining()</code> was invoked, Le bytes must be transmitted
+     * before <code>(ISO7816.SW_BYTES_REMAINING_00+remaining bytes)</code> response status is returned.</em>
+     * <li><em>In T=0 protocol, if this method throws an <code>APDUException</code>
+     * with <code>NO_T0_GETRESPONSE</code> or <code>NO_T0_REISSUE</code> reason code,
+     * the Java Card runtime environment will restart APDU command processing using the newly
+     * received command. No more output data can be transmitted. No error status response can be returned.</em>
+     * <li><em>In T=1 protocol, if this method throws an <code>APDUException</code>
+     * with <code>T1_IFD_ABORT</code> reason code, the Java Card runtime environment
+     * will restart APDU command processing using the newly received command.
+     * No more output data can be transmitted. No error status response can be returned.</em>
+     * <li><em>This method sets the state of the <code>APDU</code> object to
+     * <code>STATE_PARTIAL_OUTGOING</code> if all outgoing bytes have not been sent.</em>
+     * <li><em>This method sets the state of the <code>APDU</code> object to
+     * <code>STATE_FULL_OUTGOING</code> if all outgoing bytes have been sent.</em>
+     * </ul>
+     * @param bOff - the offset into APDU buffer
+     * @param len - the length of the data in bytes to send
+     * @throws APDUException - with the following reason codes:<ul>
+     * <li><code>APDUException.ILLEGAL_USE</code> if <code>setOutgoingLength()</code> not called
+     * or <code>setOutgoingAndSend()</code> previously invoked
+     * or response byte count exceeded or if <code>APDUException.NO_T0_GETRESPONSE</code> or
+     * <code>APDUException.NO_T0_REISSUE</code> or <code>APDUException.T1_IFD_ABORT</code>
+     * previously thrown.
+     * <li><code>APDUException.BUFFER_BOUNDS</code> if <code>bOff</code> is negative or
+     * <code>len</code> is negative or <code>bOff+len</code> exceeds the buffer size.
+     * <li><code>APDUException.IO_ERROR</code> on I/O error.
+     * <li><code>APDUException.NO_T0_GETRESPONSE</code> if T=0 protocol is in use and
+     * the CAD does not respond to <code>(ISO7816.SW_BYTES_REMAINING_00+count)</code> response status
+     * with GET RESPONSE command on the same origin logical channel number as that of the current
+     * APDU command.
+     * <li><code>APDUException.NO_T0_REISSUE</code> if T=0 protocol is in use and
+     * the CAD does not respond to <code>(ISO7816.SW_CORRECT_LENGTH_00+count)</code> response status
+     * by re-issuing same APDU command on the same origin logical channel number as that of the current
+     * APDU command with the corrected length.
+     * <li><code>APDUException.T1_IFD_ABORT</code> if T=1 protocol is in use and the CAD sends
+     * in an ABORT S-Block command to abort the data transfer.
+     * </ul>
+     * @see #setOutgoing()
+     * @see #setOutgoingNoChaining()
+     */
+    public void sendBytes(short bOff, short len) throws APDUException {
+        if ((bOff < 0) || (len < 0) || ((short)(bOff + len) > BUFFER_SIZE)) {
+            APDUException.throwIt(APDUException.BUFFER_BOUNDS);
+        }
+        if (!flags[FLAG_OUTGOING_LEN_SET]) {
+            APDUException.throwIt(APDUException.ILLEGAL_USE);
+        }
+        if ((getProtocol() & PROTOCOL_TYPE_MASK) == PROTOCOL_T0) {
+            if (flags[FLAG_NO_GET_RESPONSE] || flags[FLAG_NO_REISSUE]) {
+                APDUException.throwIt(APDUException.ILLEGAL_USE);
+            }
+        }
+        
         if (len == 0) {
             return;
         }
-        short Lr = getLr();
+        
+        short Lr = ramVarsShort[RV_SHORT_LR_REMAINING];
         if (len > Lr) {
             APDUException.throwIt(APDUException.ILLEGAL_USE);
         }
-        short Le = getLe();
+
         SimulatorSystem.sendAPDU(buffer, bOff, len);
 
-        bOff += len;
         Lr -= len;
-        Le = Lr;
 
         if (Lr == 0) {
-            ramVars[CURRENT_STATE] = STATE_FULL_OUTGOING;
+            ramVarsByte[RV_BYTE_CURRENT_STATE] = STATE_FULL_OUTGOING;
         } else {
-            ramVars[CURRENT_STATE] = STATE_PARTIAL_OUTGOING;
+            ramVarsByte[RV_BYTE_CURRENT_STATE] = STATE_PARTIAL_OUTGOING;
         }
-        ramVars[LE] = (byte) Le;
-        ramVars[LR] = (byte) Lr;
+        
+        ramVarsShort[RV_SHORT_LR_REMAINING] = Lr;
     }
 
     /**
@@ -635,7 +887,7 @@ public final class APDU {
      */
     public void sendBytesLong(byte outData[], short bOff, short len)
             throws APDUException, SecurityException {
-        short sendLength = (short) buffer.length;
+        short sendLength = BUFFER_SIZE;
         while (len > 0) {
             if (len < sendLength) {
                 sendLength = len;
@@ -672,8 +924,7 @@ public final class APDU {
      * or response byte count exceeded.
      * <li><code>APDUException.IO_ERROR</code> on I/O error.</ul>
      */
-    public void setOutgoingAndSend(short bOff, short len)
-            throws APDUException {
+    public void setOutgoingAndSend(short bOff, short len) throws APDUException {
         setOutgoing();
         setOutgoingLength(len);
         sendBytes(bOff, len);
@@ -688,13 +939,13 @@ public final class APDU {
      * @return the current processing state of the APDU
      */
     public byte getCurrentState() {
-        return ramVars[CURRENT_STATE];
+        return ramVarsByte[RV_BYTE_CURRENT_STATE];
     }
 
     /**
-     * This method is called during the <code>Applet.process(APDU)</code> method 
-     * to obtain a reference to the current APDU object. 
-     * This method can only be called in the context of the currently selected applet.  
+     * This method is called to obtain a reference to the current <CODE>APDU</CODE> object.
+     * This method can only be called in the context of the currently
+     * selected applet.
      * <p>Note:
      * <ul>
      * <li><em>Do not call this method directly or indirectly from within a method
@@ -711,15 +962,15 @@ public final class APDU {
      * <li>the method is called during applet installation or deletion.
      * </ul>
      */
-    public static APDU getCurrentAPDU()
-            throws SecurityException {
+    public static APDU getCurrentAPDU() throws SecurityException {
         return thisAPDU;
     }
 
     /**
-     * This method is called during the <code>Applet.process(APDU)</code> method 
-     * to obtain a reference to the current APDU object. 
-     * This method can only be called in the context of the currently selected applet.  
+     * This method is called to obtain a reference to the current
+     * APDU buffer.
+     * This method can only be called in the context of the currently
+     * selected applet.
      * <p>Note:<ul>
      * <li><em>Do not call this method directly or indirectly from within a method
      * invoked remotely via Java Card RMI method invocation from the client. The
@@ -735,23 +986,23 @@ public final class APDU {
      * <li>the method is called during applet installation or deletion.
      * </ul>
      */
-    public static byte[] getCurrentAPDUBuffer()
-            throws SecurityException {
+    public static byte[] getCurrentAPDUBuffer() throws SecurityException {
         return thisAPDU.getBuffer();
     }
 
     /**
      * Returns the logical channel number associated with the current <CODE>APDU</CODE> command
-     * based on the CLA byte. A number in the range 0-19 based on the CLA byte encoding 
-     * is returned if the command contains logical channel encoding. 
-     * If the command does not contain logical channel information, 0 is returned.
+     * based on the CLA byte. A number in the range 0-3 based on the least
+     * significant two bits of the CLA byte is returned if the command contains
+     * logical channel encoding. If the command does not contain logical channel
+     * information, 0 is returned.
      * See <em>Runtime
      * Specification for the Java Card Platform</em>, section
      * 4.3 for encoding details.
      * @return logical channel number, if present, within the CLA byte, 0 otherwise
      */
     public static byte getCLAChannel() {
-        return thisAPDU.ramVars[LOGICAL_CHN];
+        return thisAPDU.ramVarsByte[RV_BYTE_LOGICAL_CHANNEL];
     }
 
     /**
@@ -769,75 +1020,73 @@ public final class APDU {
      * <li><code>APDUException.ILLEGAL_USE</code> if <code>setOutgoingNoChaining()</code> previously invoked.
      * <li><code>APDUException.IO_ERROR</code> on I/O error.</ul>
      */
-    public static void waitExtension()
-            throws APDUException {
-        if (thisAPDU.flags[NO_CHAINING_FLAG]) {
-            APDUException.throwIt((short) 1);
+    public static void waitExtension() throws APDUException {
+        if (thisAPDU.flags[FLAG_NO_CHAINING]) {
+            APDUException.throwIt(APDUException.ILLEGAL_USE);
         }
     }
 
     /**
-     * Returns whether the current
-     * <code>APDU</code> command is the first or
-     * part of a command chain. Bit b5 of the CLA byte if set, indicates
-     * that the
-     * <code>APDU</code> is the first or part of a chain of commands.
-     * See Runtime Environment Specification for the Java Card Platform, section 4.3 for encoding details.
-     * @return <code>true</code> if this APDU is not the last APDU of a command chain, <code>false</code> otherwise.
+     * Returns whether the current <CODE>APDU</CODE> command is the first or
+     * part of a command chain.  Bit b5 of the CLA byte if set, indicates
+     * that the <CODE>APDU</CODE> is the first or part of a chain of commands.
+     * See Runtime Environment Specification for the Java Card Platform,
+     * section 4.3 for encoding details.
+     * @return <CODE>true</CODE> if this APDU is not the last APDU of a command chain, <CODE>false</CODE> otherwise.
      * @since 2.2.2
      */
     public boolean isCommandChainingCLA() {
-        return (buffer[ISO7816.OFFSET_CLA] & 0x10) == 0x10;
+        return isISOInterindustryCLA() &&
+               ((ramVarsByte[RV_BYTE_CLA_BYTE] & 0x010) != 0);
     }
 
     /**
-     * Returns
-     * <code>true</code> if the encoding of the current
-     * <code>APDU</code>
-     * command based on the
-     * CLA byte indicates secure messaging. The secure messaging information
-     * is in bits (b4,b3) for commands with origin channel numbers 0-3, and in bit
-     * b6 for origin channel numbers 4-19.
-     * See Runtime Environment Specification for the Java Card Platform, section 4.3 for encoding details.
-     * @return <code>true</code> if the secure messaging bit(s) is(are) nonzero, <code>false</code> otherwise
+     * Returns <CODE>true</CODE> if the encoding of the current <CODE>APDU</CODE>
+     * command based on the CLA byte indicates secure messaging. The secure
+     * messaging information is in bits (b4,b3) for commands with origin channel
+     * numbers 0-3, and in bit b6 for origin channel numbers 4-19.
+     * See Runtime Environment Specification for the Java Card Platform,
+     * section 4.3 for encoding details.
+     * @return <CODE>true</CODE> if the secure messaging bit(s) is(are) nonzero, <CODE>false</CODE> otherwise.
      * @since 2.2.2
      */
     public boolean isSecureMessagingCLA() {
-        return (buffer[ISO7816.OFFSET_CLA] & 0x40) == 0x40 ? (buffer[ISO7816.OFFSET_CLA] & 0x20) == 0x20 : (buffer[ISO7816.OFFSET_CLA] & 0x0C) != 0;
-
+        return isISOInterindustryCLA() &&
+               ((((ramVarsByte[RV_BYTE_CLA_BYTE] & 0x040) == 0) &&
+                 ((ramVarsByte[RV_BYTE_CLA_BYTE] & 0x00C) != 0)) ||
+                (((ramVarsByte[RV_BYTE_CLA_BYTE] & 0x040) != 0) &&
+                 ((ramVarsByte[RV_BYTE_CLA_BYTE] & 0x020) != 0)));
     }
 
     /**
-     * Returns whether the current
-     * <code>APDU</code> command CLA byte corresponds
+     * Returns whether the current <CODE>APDU</CODE> command CLA byte corresponds
      * to an interindustry command as defined in ISO 7816-4:2005 specification.
-     * Bit b8 of the CLA byte if
-     * <code>0</code>, indicates that the
-     * <code>APDU</code>
+     * Bit b8 of the CLA byte if <code>0</code>, indicates that the <CODE>APDU</CODE>
      * is an interindustry command.
-     * @return <code>true</code> if this APDU CLA byte corresponds to an interindustry command, <code>false</code> otherwise.
+     * @return <CODE>true</CODE> if this APDU CLA byte corresponds to an interindustry command, <CODE>false</CODE> otherwise.
      * @since 2.2.2
      */
     public boolean isISOInterindustryCLA() {
-        return (buffer[ISO7816.OFFSET_CLA]& 0x80) != 0x80;
+        return ((ramVarsByte[RV_BYTE_CLA_BYTE] & 0x080) == 0);
     }
 
     /**
-     * Returns the incoming data length(Lc). This method can be invoked
-     * whenever inbound data processing methods can be invoked during case 1, 3 or 4
-     * processing. It is most useful for an extended length enabled applet to avoid
-     * parsing the variable length Lc format in the APDU header.
-     * @return the incoming byte length indicated by the Lc field in the APDU header. Return 0 if no incoming data (Case 1)
-     * @throws APDUException with the following reason codes:<ul>
-     * <li><code>APDUException.ILLEGAL_USE</code> if <code>setIncomingAndReceive()</code> not called
-     * or if <code>setOutgoing()</code> or <code>setOutgoingNoChaining()</code> previously invoked.
-     * </ul>
-     * @see #getOffsetCdata()
+     * Returns the incoming data length(Lc). This method can be invoked whenever
+     * inbound data processing methods can be invoked during case 1, 3 or 4
+     * processing. It is most useful for an extended length enabled applet to
+     * avoid parsing the variable length Lc format in the APDU header.
+     * @return the incoming byte length indicated by the Lc field in the APDU header. Return <code>0</code> if no incoming data (Case 1)
+     * @throws APDUException - with the following reason codes:<ul>
+     * <li><code>APDUException.ILLEGAL_USE</code> if <code>setIncomingAndReceive()</code> not called or
+     * if <code>setOutgoing()</code> or <code>setOutgoingNoChaining()</code> previously invoked.
      * @since 2.2.2
      */
     public short getIncomingLength() {
-        // TODO ExtendedLength support
-        return buffer[ISO7816.OFFSET_LC];
+        if (!flags[FLAG_INCOMING] || flags[FLAG_OUTGOING]) {
+            APDUException.throwIt(APDUException.ILLEGAL_USE);
+        }
+
+        return ramVarsShort[RV_SHORT_NC];
     }
 
     /**
@@ -846,41 +1095,52 @@ public final class APDU {
      * invoked during case 1, 3 or 4 processing. It is most useful for an extended
      * length enabled applet to avoid parsing the variable length Lc format in the
      * APDU header.
-     *
-     * @return the offset within the APDU buffer for incoming command data from the previous call to <code>setIncomingAndReceive()</code> method. The value returned is either 5 (Lc is 1 byte), or 7 (when Lc is 3 bytes)
-     * @throws APDUException with the following reason codes:<ul>
-     * <li><code>APDUException.ILLEGAL_USE</code> if <code>setIncomingAndReceive()</code> not called 
-     * or if <code>setOutgoing()</code> or <code>setOutgoingNoChaining()</code> previously invoked.
-     * </ul>
-     * @see #getIncomingLength()
+     * @return the offset within the APDU buffer for incoming command data from the
+     * previous call to <code>setIncomingAndReceive()</code> method. The
+     * value returned is either 5 (Lc is 1 byte), or 7 (when Lc is 3 bytes)
+     * @throws APDUException - with the following reason codes:<ul>
+     * <li><code>APDUException.ILLEGAL_USE</code> if <code>setIncomingAndReceive()</code> not called or
+     * if <code>setOutgoing()</code> or <code>setOutgoingNoChaining()</code> previously invoked.
      * @since 2.2.2
      */
     public short getOffsetCdata() {
-        // TODO ExtendedLength support
-        return ISO7816.OFFSET_CDATA;
-    }
-    
-    // return Le variable
-    private short getLe() {
-        if (ramVars[LE] == 0) {
-            return 256;
+        if (!flags[FLAG_INCOMING] || flags[FLAG_OUTGOING]) {
+            APDUException.throwIt(APDUException.ILLEGAL_USE);
+        }
+
+        if (flags[FLAG_EXTENDED_LENGTH]) {
+            return ISO7816.OFFSET_EXT_CDATA;
         } else {
-            return (short) (ramVars[LE] & 0xff);
+            return ISO7816.OFFSET_CDATA;
         }
     }
 
-    // return Lr variable
-    private short getLr() {
-        return (short) (ramVars[LR] & 0xff);
-    }
-
     /**
-     * clear internal state of the APDU
+     * Load internal state of the APDU.
+     * 
+     * @param headerBuffer
+     * @param headerOffset
+     * @param commandDataLength
+     * @param logicalChannel
+     * @param extendedLength 
      */
-    public void reset(){
-        Util.arrayFillNonAtomic(buffer, (short)0, (short) buffer.length, (byte)0);
-        Util.arrayFillNonAtomic(ramVars, (short)0, (short) ramVars.length, (byte)0);
-        for(byte i=0;i<flags.length;i++) {flags[i]=false;}
+    public void load(byte[] headerBuffer, short headerOffset, short commandDataLength, byte logicalChannel, boolean extendedLength) {
+        reset();
+        
+        Util.arrayCopyNonAtomic(headerBuffer, headerOffset, buffer, (short)0, extendedLength ? ISO7816.OFFSET_EXT_CDATA : ISO7816.OFFSET_CDATA);
+        ramVarsByte[RV_BYTE_CLA_BYTE] = buffer[ISO7816.OFFSET_CLA];
+        ramVarsByte[RV_BYTE_LOGICAL_CHANNEL] = logicalChannel;
+        ramVarsShort[RV_SHORT_NC] = commandDataLength;
+        flags[FLAG_EXTENDED_LENGTH] = extendedLength;
     }
-
+    
+    /**
+     * Clear internal state of the APDU.
+     */
+    public void reset() {
+        Util.arrayFillNonAtomic(buffer, (short)0, (short) buffer.length, (byte)0);
+        Util.arrayFillNonAtomic(ramVarsByte, (short)0, (short) ramVarsByte.length, (byte)0);
+        for (byte i = 0; i < ramVarsShort.length; ++i) { ramVarsShort[i] = (short)0; }
+        for (byte i = 0; i < flags.length; ++i) { flags[i] = false; }
+    }
 }

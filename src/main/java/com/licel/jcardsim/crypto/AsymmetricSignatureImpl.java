@@ -39,7 +39,7 @@ import org.bouncycastle.crypto.signers.RSADigestSigner;
  * on BouncyCastle CryptoAPI
  * @see Signature
  */
-public class AsymmetricSignatureImpl extends Signature implements SignatureMessageRecovery{
+public class AsymmetricSignatureImpl extends Signature implements SignatureMessageRecovery {
 
     Signer engine;
     Key key;

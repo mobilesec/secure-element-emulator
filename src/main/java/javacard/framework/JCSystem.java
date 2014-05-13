@@ -15,6 +15,7 @@
  */
 package javacard.framework;
 
+import com.licel.jcardsim.base.SimulatorConfig;
 import com.licel.jcardsim.base.SimulatorSystem;
 
 /**
@@ -80,14 +81,12 @@ public final class JCSystem {
      * </ul>
      */
     public static final byte CLEAR_ON_DESELECT = 2;
-    // implementaion api version
-    private static final short API_VERSION = 0x0202;
-    // APDU for I/O
-    private static APDU apdu;
     
-    static {
-        apdu = new APDU();
-    }
+    /**
+     * Implementation's Java Card API version.
+     */
+    private static final short API_VERSION = SimulatorConfig.API_VERSION;
+    
 
     /**
      * Checks if the specified object is transient.
@@ -203,7 +202,7 @@ public final class JCSystem {
      * @return the <code>AID</code> object
      */
     public static AID getAID() {
-        return SimulatorSystem.getAID();
+        return SimulatorSystem.getCurrentContextAID();
     }
 
     /**
@@ -404,13 +403,15 @@ public final class JCSystem {
      * shareable interface object. <p>This method returns <code>null</code>
      * if:
      * <ul>
-     *  <li>the <code>Applet.register()</code> has not yet been invoked</li>
-     *  <li>the server does not exist</li>
-     *  <li>the server returns <code>null</code></li>
+     * <li>the <code>Applet.register()</code> has not yet been invoked</li>
+     * <li>the server applet does not exist</li>
+     * <li>the server applet returns <code>null</code></li>
+     * <li>the server applet throws an uncaught exception</li>
      * </ul>
      * @param serverAID the AID of the server applet
      * @param parameter optional parameter data
      * @return the shareable interface object or <code>null</code>
+     * @throws SecurityException if the server applet is not multiselectable and is currently active on another logical channel
      * @see Applet#getShareableInterfaceObject(AID, byte)
      */
     public static Shareable getAppletShareableInterfaceObject(AID serverAID, byte parameter) {
@@ -461,7 +462,7 @@ public final class JCSystem {
      * <CODE>MultiSelectable.select(boolean)</CODE> and <CODE>MultiSelectable.deselect(boolean)</CODE> methods
      * during MANAGE CHANNEL APDU command processing, the logical channel number
      * returned may be different.
-     * @return the logical channel number in the range 0-3 assigned to the
+     * @return the logical channel number in the range 0-19 assigned to the
      * currently selected applet instance
      */
     public static byte getAssignedChannel() {
@@ -479,6 +480,7 @@ public final class JCSystem {
      * @param theApplet the AID of the applet object being queried
      * @return <code>true</code> if and only if the applet specified by the
      * AID parameter is currently active on this or another logical channel
+     * @see #lookupAID(byte[], short, byte)
      */
     public static boolean isAppletActive(AID theApplet) {
         return SimulatorSystem.isAppletActive(theApplet);

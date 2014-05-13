@@ -58,8 +58,8 @@ public abstract class RandomData {
             throws CryptoException {
         RandomData instance = null;
         switch (algorithm) {
-            case ALG_PSEUDO_RANDOM: 
-            case ALG_SECURE_RANDOM: 
+            case ALG_PSEUDO_RANDOM:
+            case ALG_SECURE_RANDOM:  // WARNING: ALG_SECURE_RANDOM implemented as PRNG!!!
                 instance = new RandomDataImpl();
                 break;
             default:

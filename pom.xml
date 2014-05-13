@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.licel</groupId>
-    <version>2.2.2-SNAPSHOT</version>
+    <version>2.2.2</version>
     <packaging>jar</packaging>
     <url>http://maven.apache.org</url>
 
@@ -15,8 +15,8 @@
     </parent>
   
     <organization>
-        <name>Licel LLC</name>
-        <url>https://licel.ru</url>
+        <name>FH OOe Forschungs &amp; Entwicklungs GmbH, Michael Roland</name>
+        <url>https://www.nfc-research.at</url>
     </organization>
 
     <licenses>
@@ -32,53 +32,6 @@
         <netbeans.hint.license>apache20</netbeans.hint.license>
     </properties>
 
-    <scm>
-        <connection>scm:svn:http://jcardsim.googlecode.com/svn/trunk/</connection>
-        <developerConnection>scm:svn:https://jcardsim.googlecode.com/svn/trunk/</developerConnection>
-        <url>http://jcardsim.googlecode.com/svn/trunk/</url>
-    </scm>
-    
-    <profiles>
-        <profile>
-            <id>sign</id>
-            <activation>
-                <property>
-                    <name>keystoreLocation</name>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-jarsigner-plugin</artifactId>
-                        <version>1.2</version>
-                        <executions>
-                            <execution>
-                                <id>sign</id>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                            </execution>
-                            <execution>
-                                <id>verify</id>
-                                <goals>
-                                    <goal>verify</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                        <configuration>
-                            <keystore>${keystoreLocation}</keystore>
-                            <alias>${keyAlias}</alias>
-                            <storepass>${keystorePass}</storepass>
-                            <keypass>${keyPass}</keypass>
-                            <storetype>${storeType}</storetype>
-                        </configuration>
-                    </plugin>                
-                </plugins>
-            </build>
-        </profile>    
-    </profiles>
-  
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
@@ -92,14 +45,20 @@
             <version>1.46</version>
         </dependency>
         <dependency>
-            <groupId>com.google.android</groupId>
-            <artifactId>android</artifactId>
-            <version>4.1.1.4</version>
+            <groupId>xpp3</groupId>
+            <artifactId>xpp3</artifactId>
+            <version>1.1.4c</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>objenesis</groupId>
+            <artifactId>objenesis</artifactId>
+            <version>1.3</version>
             <type>jar</type>
         </dependency>
     </dependencies>
     <artifactId>jcardsim</artifactId>
-    <name>Java Card Runime Environment Simulator</name>
+    <name>jCardSim-2.2.1-r2-mroland</name>
     <description>jCardSim is open-source library contains implementation of Java Card API</description>
     <build>
         <plugins>
@@ -110,6 +69,7 @@
                 <configuration>
                     <source>1.5</source>
                     <target>1.5</target>
+                    <compilerArgument>-Xlint:unchecked</compilerArgument>
                 </configuration>
             </plugin>
             <plugin>
@@ -153,6 +113,32 @@
                     </execution>
                 </executions>
             </plugin> 
+            <!-- plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jarsigner-plugin</artifactId>
+                <version>1.2</version>
+                <executions>
+                    <execution>
+                        <id>sign</id>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <keystore>${keystoreLocation}</keystore>
+                    <alias>${keyAlias}</alias>
+                    <storepass>${keystorePass}</storepass>
+                    <keypass>${keyPass}</keypass>
+                    <storetype>${storeType}</storetype>
+                </configuration>
+            </plugin -->                
         </plugins>
     </build>
 </project>

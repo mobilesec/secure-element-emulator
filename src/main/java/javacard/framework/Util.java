@@ -226,7 +226,7 @@ public class Util {
      * @param bArray byte array
      * @param bOff offset within byte array containing first byte (the high order byte)
      * @return the short value the concatenated result
-     * @throws ArrayIndexOutOfBoundsException if the <CODE>bOff</CODE> parameter is negative or if <CODE>bOff+2</CODE> is greater than the length of <code>bArray</code>
+     * @throws ArrayIndexOutOfBoundsException if the <CODE>bOff</CODE> parameter is negative or if <CODE>bOff+2</CODE> is greater than the length
      * @throws NullPointerException if the <CODE>bArray</CODE> parameter is <CODE>null</CODE>
      */
     public static final short getShort(byte bArray[], short bOff) throws ArrayIndexOutOfBoundsException, NullPointerException {
@@ -243,7 +243,7 @@ public class Util {
      * <li><em>If the byte array is persistent, this operation is performed atomically.
      * If the commit capacity is exceeded, no operation is performed and a </em><code>TransactionException</code><em>
      * exception is thrown.</em></li></ul>
-     * @throws ArrayIndexOutOfBoundsException if the <CODE>bOff</CODE> parameter is negative or if <CODE>bOff+2</CODE> is greater than the length of <code>bArray</code>
+     * @throws ArrayIndexOutOfBoundsException if the <CODE>bOff</CODE> parameter is negative or if <CODE>bOff+2</CODE> is greater than the length
      * of <CODE>bArray</CODE>
      * @throws NullPointerException if the <CODE>bArray</CODE> parameter is <CODE>null</CODE>
      * @throws TransactionException if the operation would cause the commit capacity to be exceeded

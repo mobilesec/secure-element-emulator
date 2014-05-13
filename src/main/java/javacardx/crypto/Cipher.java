@@ -15,7 +15,7 @@
  */
 package javacardx.crypto;
 
-import com.licel.jcardsim.crypto.AssymetricCipherImpl;
+import com.licel.jcardsim.crypto.AsymmetricCipherImpl;
 import com.licel.jcardsim.crypto.SymmetricCipherImpl;
 import javacard.security.CryptoException;
 import javacard.security.Key;
@@ -160,9 +160,8 @@ public abstract class Cipher {
      * pads input data according to the PKCS#1-OAEP scheme (IEEE 1363-2000).
      */
     public static final byte ALG_RSA_PKCS1_OAEP = 15;
-    
     /**
-     * Cipher algorithm ALG_KOREAN_SEED_ECB_NOPAD provides a cipher using the
+     * Cipher algorithm <code>ALG_KOREAN_SEED_ECB_NOPAD</code> provides a cipher using the
      * Korean SEED algorithm specified in the Korean SEED Algorithm
      * specification provided by KISA, Korea Information Security Agency in ECB
      * mode and does not pad input data. If the input data is not block aligned
@@ -171,19 +170,16 @@ public abstract class Cipher {
      * @since 2.2.2
      */
     public static final byte ALG_KOREAN_SEED_ECB_NOPAD = 16;
-    
     /**
-     * Cipher algorithm ALG_KOREAN_SEED_CBC_NOPAD provides a cipher using the
+     * Cipher algorithm <code>ALG_KOREAN_SEED_CBC_NOPAD</code> provides a cipher using the
      * Korean SEED algorithm specified in the Korean SEED Algorithm
      * specification provided by KISA, Korea Information Security Agency in ECB
      * mode and does not pad input data. If the input data is not block aligned
      * it throws CryptoException with the reason code ILLEGAL_USE.
      *
-     *
      * @since 2.2.2
      */
     public static final byte ALG_KOREAN_SEED_CBC_NOPAD = 17;
-
     /**
      * Used in <code>init()</code> methods to indicate decryption mode.
      */
@@ -238,7 +234,7 @@ public abstract class Cipher {
             case ALG_RSA_ISO14888:
             case ALG_RSA_ISO9796:
             case ALG_RSA_PKCS1_OAEP:
-                instance = new AssymetricCipherImpl(algorithm);
+                instance = new AsymmetricCipherImpl(algorithm);
                 break;
             default:
                 CryptoException.throwIt(CryptoException.NO_SUCH_ALGORITHM);

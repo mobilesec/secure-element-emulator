@@ -55,7 +55,7 @@ public final class ByteContainer {
      * @param bInteger <code>BigInteger</code> object
      */
     public ByteContainer(BigInteger bInteger) {
-        this(bInteger.toByteArray(), (short) 0, (short) bInteger.toByteArray().length);
+        setBytes(bInteger.toByteArray());
     }
 
     /**
@@ -75,7 +75,12 @@ public final class ByteContainer {
      * @param bInteger
      */
     public void setBigInteger(BigInteger bInteger) {
-        setBytes(bInteger.toByteArray());
+        byte[] bytes = bInteger.toByteArray();
+        if ((bytes.length > 1) && (bytes[0] == 0) && ((bytes[1] & 0x80) != 0)) {
+            setBytes(bytes, (short)1, (short)(bytes.length - 1));
+        } else {
+            setBytes(bytes);
+        }
     }
 
     /**
@@ -149,8 +154,7 @@ public final class ByteContainer {
             CryptoException.throwIt(CryptoException.ILLEGAL_VALUE);
         }
         Util.arrayCopy(data, (short) 0, dest, offset, (short) data.length);
-        // https://code.google.com/p/jcardsim/issues/detail?id=14
-        return (short)data.length;
+        return (short) data.length;
     }
 
     /**

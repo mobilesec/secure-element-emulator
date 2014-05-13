@@ -27,6 +27,7 @@ import com.licel.jcardsim.base.SimulatorSystem;
  * length APDU protocol. The applet subclass must implement the
  * <code>javacardx.apdu.ExtendedLength</code> interface to access this extended length APDU
  * protocol capability of the <code>javacard.framework.APDU</code> object.
+ *
  * <p>
  * Example usage of <code>Applet</code>
  * <pre><code>

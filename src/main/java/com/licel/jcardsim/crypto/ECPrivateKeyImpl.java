@@ -15,6 +15,7 @@
  */
 package com.licel.jcardsim.crypto;
 
+import javacard.framework.Util;
 import javacard.security.CryptoException;
 import javacard.security.ECPrivateKey;
 import org.bouncycastle.crypto.CipherParameters;
@@ -32,8 +33,9 @@ public class ECPrivateKeyImpl extends ECKeyImpl implements ECPrivateKey {
 
     /**
      * Construct not-initialized ecc private key
-     * @param size key size it bits
-     * @see KeyBuilder
+     * @param keyType 
+     * @param keySize key size it bits
+     * @see javacard.security.KeyBuilder
      */
     public ECPrivateKeyImpl(byte keyType, short keySize) {
         super(keyType, keySize);
@@ -42,13 +44,24 @@ public class ECPrivateKeyImpl extends ECKeyImpl implements ECPrivateKey {
     /**
      * Construct and initialize ecc key with ECPrivateKeyParameters.
      * Use in KeyPairImpl
-     * @see KeyPair
+     * @see javacard.security.KeyPair
      * @see ECPrivateKeyParameters
      * @param params key params from BouncyCastle API
      */
     public ECPrivateKeyImpl(ECPrivateKeyParameters params) {
         super(params);
-        s.setBigInteger(params.getD());
+        byte[] sBytes = params.getD().toByteArray();
+        int byteLength = size / 8;
+        if ((size % 8) != 0) ++byteLength;
+        if (sBytes.length < byteLength) {
+            byte[] bytesPadded = new byte[byteLength];
+            Util.arrayCopy(sBytes, (short)0, bytesPadded, (short)(bytesPadded.length - sBytes.length), (short)sBytes.length);
+            s.setBytes(bytesPadded);
+        } else if ((sBytes.length > byteLength) && (sBytes[0] == 0) && ((sBytes[1] & 0x80) != 0)) {
+            s.setBytes(sBytes, (short)1, (short)(sBytes.length - 1));
+        } else {
+            s.setBytes(sBytes);
+        }
     }
 
     public void setS(byte[] buffer, short offset, short length) throws CryptoException {

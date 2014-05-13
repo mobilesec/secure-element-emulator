@@ -15,6 +15,7 @@
  */
 package com.licel.jcardsim.crypto;
 
+import javacard.framework.Util;
 import javacard.security.CryptoException;
 import javacard.security.DSAPublicKey;
 import javacard.security.KeyBuilder;
@@ -34,7 +35,7 @@ public class DSAPublicKeyImpl extends DSAKeyImpl implements DSAPublicKey {
 
     /**
      * Construct not-initialized dsa public key
-     * @param size key size it bits
+     * @param keySize key size it bits
      * @see KeyBuilder
      */
     public DSAPublicKeyImpl(short keySize) {
@@ -44,13 +45,24 @@ public class DSAPublicKeyImpl extends DSAKeyImpl implements DSAPublicKey {
     /**
      * Construct and initialize ecc key with DSAPublicKeyParameters.
      * Use in KeyPairImpl
-     * @see KeyPair
+     * @see javacard.security.KeyPair
      * @see DSAPublicKeyParameters
      * @param params key params from BouncyCastle API
      */
     public DSAPublicKeyImpl(DSAPublicKeyParameters params) {
         super(params);
-        y.setBigInteger(params.getY());
+        byte[] yBytes = params.getY().toByteArray();
+        int byteLength = size / 8;
+        if ((size % 8) != 0) ++byteLength;
+        if (yBytes.length < byteLength) {
+            byte[] bytesPadded = new byte[byteLength];
+            Util.arrayCopy(yBytes, (short)0, bytesPadded, (short)(bytesPadded.length - yBytes.length), (short)yBytes.length);
+            y.setBytes(bytesPadded);
+        } else if ((yBytes.length > byteLength) && (yBytes[0] == 0) && ((yBytes[1] & 0x80) != 0)) {
+            y.setBytes(yBytes, (short)1, (short)(yBytes.length - 1));
+        } else {
+            y.setBytes(yBytes);
+        }
     }
 
     public void setY(byte[] buffer, short offset, short length) throws CryptoException {
