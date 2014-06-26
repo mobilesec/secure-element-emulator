@@ -565,11 +565,12 @@ public class PersistentMemory {
     public void garbageCollect(boolean includeTransientMemory) {
         // TODO: It might be a good idea to only perform garbage collection if mReferencesMap.size() reaches a certain threshold or if GC was skipped N times before.
 
-        Logging.debug(LOG_TAG, "Performing garbage-collection @" + mCurrentRefreshTag);
-        
         if (mCurrentRefreshTag == 0) {
-            Logging.error(LOG_TAG, "GC called without refresh!");
+            Logging.debug(LOG_TAG, "GC called without refresh!");
+            return;
         }
+        
+        Logging.debug(LOG_TAG, "Performing garbage-collection @" + mCurrentRefreshTag);
         
         for (ClassState classState : mClassMap.values()) {
             classState.pingClass();
@@ -591,23 +592,39 @@ public class PersistentMemory {
             }
         } else {
             TransientMemory transientMemory = SimulatorSystem.getTransientMemoryInstance();
-            for (ArrayList<FieldState> segment : transientMemory.clearOnDeselect.values()) {
-                Iterator<FieldState> iterField = segment.iterator();
-                while (iterField.hasNext()) {
-                    final FieldState fieldState = iterField.next();
-                    if ((fieldState == null) || !fieldState.isReachable()) {
-                        iterField.remove();
-                        Logging.debug(LOG_TAG, "Garbage-collected transient object #" + fieldState.getHashCode() + " (" + fieldState.getFieldType() + ") during GC!");
+            for (Map.Entry<String, ArrayList<FieldState>> entry : transientMemory.clearOnDeselect.entrySet()) {
+                String key = entry.getKey();
+                ArrayList<FieldState> segment = entry.getValue();
+                if ((key == null) || key.isEmpty()) {
+                    for (FieldState fieldState : segment) {
+                        fieldState.pingInstance();
+                    }
+                } else {
+                    Iterator<FieldState> iterField = segment.iterator();
+                    while (iterField.hasNext()) {
+                        final FieldState fieldState = iterField.next();
+                        if ((fieldState == null) || !fieldState.isReachable()) {
+                            iterField.remove();
+                            Logging.debug(LOG_TAG, "Garbage-collected transient object #" + fieldState.getHashCode() + " (" + fieldState.getFieldType() + ") during GC!");
+                        }
                     }
                 }
             }
-            for (ArrayList<FieldState> segment : transientMemory.clearOnReset.values()) {
-                Iterator<FieldState> iterField = segment.iterator();
-                while (iterField.hasNext()) {
-                    final FieldState fieldState = iterField.next();
-                    if ((fieldState == null) || !fieldState.isReachable()) {
-                        iterField.remove();
-                        Logging.debug(LOG_TAG, "Garbage-collected transient object #" + fieldState.getHashCode() + " (" + fieldState.getFieldType() + ") during GC!");
+            for (Map.Entry<String, ArrayList<FieldState>> entry : transientMemory.clearOnReset.entrySet()) {
+                String key = entry.getKey();
+                ArrayList<FieldState> segment = entry.getValue();
+                if ((key == null) || key.isEmpty()) {
+                    for (FieldState fieldState : segment) {
+                        fieldState.pingInstance();
+                    }
+                } else {
+                    Iterator<FieldState> iterField = segment.iterator();
+                    while (iterField.hasNext()) {
+                        final FieldState fieldState = iterField.next();
+                        if ((fieldState == null) || !fieldState.isReachable()) {
+                            iterField.remove();
+                            Logging.debug(LOG_TAG, "Garbage-collected transient object #" + fieldState.getHashCode() + " (" + fieldState.getFieldType() + ") during GC!");
+                        }
                     }
                 }
             }
@@ -618,6 +635,9 @@ public class PersistentMemory {
             final FieldState fieldState = entry.getValue();
             if ((fieldState == null) || !fieldState.isReachable()) {
                 iter.remove();
+                if (isProhibitedReference(fieldState.getHashCode())) {
+                    Logging.error(LOG_TAG, "Garbage-collected #" + entry.getKey() + " (" + fieldState.getFieldType() + ") that is a prohibited reference!");
+                }
                 UniqueObjectIdentifier.forget(fieldState.getInstance());
                 Logging.debug(LOG_TAG, "Garbage-collected #" + entry.getKey() + " (" + fieldState.getFieldType() + ") during GC!");
             }

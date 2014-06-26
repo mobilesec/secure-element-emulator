@@ -913,6 +913,9 @@ public class SimulatorRuntime {
                     currentAppletContext = null; // current context is RTE
                     previousAppletContexts.clear(); // clear context switching stack
 
+                    // initialize global APDU object (if not already initialized)
+                    APDU.getCurrentAPDU();
+                    
                     if (commandAPDU.isExtendedLength() &&
                         (!SimulatorConfig.EXTENDED_LENGTH_SUPPORT ||
                          commandAPDU.getNc() > SimulatorConfig.EXTENDED_LENGTH_MAXIMUM)) {
@@ -1041,15 +1044,17 @@ public class SimulatorRuntime {
                     }
                 }
             } catch (Throwable e) {
-                Logging.info(TAG, "transceiveAPDU: Processing exception", e);
-                
                 if (e instanceof CardRuntimeException) {
+                    Logging.info(TAG, "transceiveAPDU: CardRuntimeException: " + e.getClass().getName() + " [" + ((CardRuntimeException)e).getReason() + "]");
                     responseAPDU = new ResponseAPDU(null, 0, ((CardRuntimeException)e).getReason());
                 } else if (e instanceof CardException) {
+                    Logging.info(TAG, "transceiveAPDU: CardException: " + e.getClass().getName() + " [" + ((CardException)e).getReason() + "]");
                     responseAPDU = new ResponseAPDU(null, 0, ((CardException)e).getReason());
                 } else if (e instanceof RuntimeException) {
+                    Logging.error(TAG, "transceiveAPDU: Processing exception", e);
                     throw (RuntimeException)e;
                 } else {
+                    Logging.error(TAG, "transceiveAPDU: Processing exception", e);
                     responseAPDU = null;
                 }
             }
@@ -1662,7 +1667,12 @@ public class SimulatorRuntime {
             for (AppletInstanceHolder applet : aplts) {
                 if (applet != null) {
                     applet.reset();
-                    applets.put(applet.getClassAID(), applet);
+                    AID inst = applet.getInstanceAID();
+                    if (inst != null) {
+                        applets.put(inst, applet);
+                    } else {
+                        applets.put(applet.getClassAID(), applet);
+                    }
                 }
             }
         }
