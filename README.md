@@ -5,8 +5,9 @@ This project aims at emulating a secure element environment for debugging and ra
 
 The idea and concepts of the emulation environment are explained in
 
-- M. Roland: "*Debugging and Rapid Prototyping of NFC Secure Element Applications*," in Mobile Computing, Applications, and Services (MobiCASE 2013), vol. 130/2014, LNICST, pp. 298--313, Springer, November 2013, and
-- M. Roland, J. Langer, and R. Mayrhofer: "*(Ab)using foreign VMs: Running Java Card Applets in non-Java Card Virtual Machines*," in Proceedings of the 11th International Conference on Advances in Mobile Computing & Multimedia (MoMM2013), pp. 286--292, ACM, December 2013.
+- M. Roland: "*Debugging and Rapid Prototyping of NFC Secure Element Applications*," in Mobile Computing, Applications, and Services (MobiCASE 2013), vol. 130/2014, LNICST, pp. 298--313, Springer, November 2013,
+- M. Roland, J. Langer, and R. Mayrhofer: "*(Ab)using foreign VMs: Running Java Card Applets in non-Java Card Virtual Machines*," in Proceedings of the 11th International Conference on Advances in Mobile Computing & Multimedia (MoMM2013), pp. 286--292, ACM, December 2013, and
+- M. Roland, J. Langer, and R. Mayrhofer: “*Managing the life cycle of Java Card applets in other Java virtual machines*,” International Journal of Pervasive Computing and Communications, vol. 10, no. 3, pp. 291–312, 2014. ISSN: 1742-7371.
 
 
 **License**: [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)
